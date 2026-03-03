@@ -1,0 +1,16 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\Envy\OneDrive\Desktop\FRONTEND\src\pages\patient\BookingPage.jsx
+  57:9  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/purity')
+
+C:\Users\Envy\OneDrive\Desktop\FRONTEND\src\pages\patient\PatientDashboard.jsx
+  63:13  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+  66:13  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+  68:13  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+Γ£û 4 problems (0 errors, 4 warnings)
+  0 errors and 4 warnings potentially fixable with the `--fix` option.
+

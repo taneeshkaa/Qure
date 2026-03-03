@@ -1,0 +1,24 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\Envy\OneDrive\Desktop\FRONTEND\src\pages\patient\PatientDashboard.jsx
+  60:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  58 |         if (query.trim().length >= 2) {
+  59 |             const det = detectSpecialty(query);
+> 60 |             setDetection(det);
+     |             ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  61 |             const { doctors: d, hospitals: h } = smartSearch(query);
+  62 |             setPreview([...d.slice(0, 3), ...h.slice(0, 2)]);
+  63 |         } else {  react-hooks/set-state-in-effect
+
+Γ£û 1 problem (1 error, 0 warnings)
+

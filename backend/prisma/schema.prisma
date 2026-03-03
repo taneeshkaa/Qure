@@ -1,0 +1,264 @@
+// Prisma Schema for QueueEase Backend — Phase 1 + 2 + 3
+// Database: Neon (Serverless PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Locations ───────────────────────────────────────────────
+// Normalized table for Indian states and cities.
+// Supports the "State > City > Hospital" dropdown cascade.
+model Location {
+  id         Int        @id @default(autoincrement())
+  state_name String
+  city_name  String
+  hospitals  Hospital[]
+
+  deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([state_name, city_name], name: "unique_state_city")
+  @@map("locations")
+}
+
+// ─── Hospitals ───────────────────────────────────────────────
+model Hospital {
+  id                Int     @id @default(autoincrement())
+  location_id       Int
+  hospital_name     String
+  contact_person    String
+  phone_1           String
+  phone_2           String?
+  owner_name        String  @default("") // Who owns/runs the hospital
+  license_number    String  @default("") // Medical registration ID
+  total_staff_count Int? // Quick-reference employee count
+
+  is_approved Boolean   @default(false) // Phase 4 Admin verification
+  deletedAt   DateTime? @map("deleted_at") // Phase 4 Soft Delete
+
+  doctors   Doctor[]
+  chemist   Chemist? // Phase 3: one pharmacy per hospital
+  location  Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([location_id, hospital_name], name: "unique_hospital_per_location")
+  @@map("hospitals")
+}
+
+// ─── Doctors ─────────────────────────────────────────────────
+model Doctor {
+  id             Int    @id @default(autoincrement())
+  full_name      String
+  specialization String
+  experience     Int    @default(0) // Years of practice
+  hospital_id    Int
+
+  deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
+
+  hospital      Hospital       @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  slots         DoctorSlot[]
+  appointments  Appointment[]
+  prescriptions Prescription[] // Phase 3
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("doctors")
+}
+
+// ─── Doctor Slots (Weekly Availability) ──────────────────────
+// Defines when a doctor is available each day of the week.
+// day_of_week: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+model DoctorSlot {
+  id                    Int    @id @default(autoincrement())
+  doctor_id             Int
+  day_of_week           Int // 0–6
+  start_time            String // "HH:MM" e.g. "09:00"
+  end_time              String // "HH:MM" e.g. "17:00"
+  slot_duration_minutes Int    @default(30)
+  doctor                Doctor @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+
+  @@unique([doctor_id, day_of_week], name: "unique_doctor_day")
+  @@map("doctor_slots")
+}
+
+// ─── Symptom Mapping ─────────────────────────────────────────
+// Lookup table: keyword → specialist. Allows patients to search
+// by symptom/organ and get matched to the right doctor type.
+model SymptomMapping {
+  id             Int    @id @default(autoincrement())
+  keyword        String @unique // lowercase, e.g. "pancreas"
+  specialization String // e.g. "Gastroenterologist"
+
+  @@map("symptom_mappings")
+}
+
+// ─── Patients ────────────────────────────────────────────────
+model Patient {
+  id          Int    @id @default(autoincrement())
+  full_name   String
+  email       String @unique
+  phone       String @unique
+  age         Int
+  gender      String
+  address     String
+  blood_group String
+
+  deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
+
+  medicalProfile MedicalProfile?
+  appointments   Appointment[]
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@map("patients")
+}
+
+// ─── Medical Profiles ────────────────────────────────────────
+// Linked 1:1 with Patient. Contains sensitive health data.
+model MedicalProfile {
+  id              Int     @id @default(autoincrement())
+  patient_id      Int     @unique
+  emergency_name  String
+  emergency_phone String
+  allergies       String?
+  medications     String?
+  notes           String?
+
+  deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
+
+  patient   Patient  @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("medical_profiles")
+}
+
+// ─── Appointments ────────────────────────────────────────────
+// Tracks booked appointments with atomic token number generation.
+// The unique constraint on (doctor_id, date, slot) prevents double-booking.
+model Appointment {
+  id                  Int      @id @default(autoincrement())
+  patient_id          Int
+  doctor_id           Int
+  date                DateTime @db.Date
+  slot                String // "HH:MM" e.g. "10:00"
+  token_number        Int
+  problem_description String
+  status              String   @default("BOOKED") // BOOKED, COMPLETED, CANCELLED
+
+  patient      Patient             @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  doctor       Doctor              @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  reminders    Reminder[]
+  prescription Prescription? // Phase 3: one prescription per appointment
+  attachments  MedicalAttachment[] // Phase 4
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([doctor_id, date, slot], name: "unique_doctor_date_slot")
+  @@map("appointments")
+}
+
+// ─── Reminders ───────────────────────────────────────────────
+// Scheduled alerts: "1_DAY" (24h before) and "1_HOUR" (1h before).
+// The cron job picks up unsent reminders and processes them.
+model Reminder {
+  id             Int         @id @default(autoincrement())
+  appointment_id Int
+  type           String // "1_DAY" | "1_HOUR"
+  scheduled_at   DateTime
+  sent           Boolean     @default(false)
+  appointment    Appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@map("reminders")
+}
+
+// ─── Chemists (Phase 3) ──────────────────────────────────────
+// Each hospital has exactly one dedicated pharmacy.
+// Staff use separate credentials to access the medicine queue.
+model Chemist {
+  id                  Int    @id @default(autoincrement())
+  hospital_id         Int    @unique // 1:1 with Hospital
+  shop_name           String
+  staff_password_hash String
+
+  deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
+
+  hospital      Hospital       @relation(fields: [hospital_id], references: [id], onDelete: Cascade)
+  prescriptions Prescription[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("chemists")
+}
+
+// ─── Prescriptions (Phase 3) ─────────────────────────────────
+// Digital prescription created by the doctor, routed to the chemist.
+// Status flow: PENDING → READY → DELIVERED
+model Prescription {
+  id             Int         @id @default(autoincrement())
+  appointment_id Int         @unique // 1:1 with Appointment
+  doctor_id      Int
+  chemist_id     Int
+  content        String // Prescription text (medicines/tests)
+  status         String      @default("PENDING") // PENDING, READY, DELIVERED
+  appointment    Appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  doctor         Doctor      @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  chemist        Chemist     @relation(fields: [chemist_id], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@map("prescriptions")
+}
+
+// ─── Admin (Phase 4) ─────────────────────────────────────────
+// Master admin accounts.
+model Admin {
+  id            Int           @id @default(autoincrement())
+  email         String        @unique
+  password_hash String
+  role          String        @default("SUPER_ADMIN")
+  actions       AdminAction[]
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@map("admins")
+}
+
+// ─── Admin Actions (Phase 4) ─────────────────────────────────
+// Audit log of destructive/verification actions taken by admins.
+model AdminAction {
+  id          String   @id @default(uuid()) @db.Uuid
+  admin_id    Int
+  target_type String // Hospital, Doctor, Patient, Pharmacy
+  target_id   Int // The numeric ID of the soft-deleted/approved entity
+  action      String // DELETE, SUSPEND, APPROVE
+  admin       Admin    @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("admin_actions")
+}
+
+// ─── Medical Attachments (Phase 4) ───────────────────────────
+// Patient-uploaded files linked to a specific appointment.
+// Hosted on Cloudinary/S3, DB only stores the URL and metadata.
+model MedicalAttachment {
+  id             String      @id @default(uuid()) @db.Uuid
+  appointment_id Int
+  file_url       String      @db.Text
+  file_type      String // 'image/jpeg', 'application/pdf'
+  category       String // 'Test', 'Prescription', 'Medicine'
+  appointment    Appointment @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  @@map("medical_attachments")
+}
