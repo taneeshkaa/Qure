@@ -17,9 +17,11 @@ export default function LoginPage() {
         e.preventDefault();
         if (!email || !password) { setError('Please fill in all fields.'); return; }
 
-        // Patient login not yet implemented in backend
+        // Patient login logic (simulated for demo purposes since patients don't have passwords in backend)
         if (role === 'patient') {
-            setError('Patient login is not yet available. Please contact your hospital.');
+            localStorage.setItem('token', 'simulated_patient_token');
+            localStorage.setItem('user', JSON.stringify({ email: email.trim(), role: 'patient' }));
+            navigate('/patient/dashboard');
             return;
         }
 
