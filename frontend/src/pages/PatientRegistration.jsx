@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,8 +13,10 @@ import StepIndicator from '../components/StepIndicator';
 import PulseButton from '../components/PulseButton';
 import { registerPatient } from '../api/registration';
 
-const BLOOD_GROUPS = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'];
-const GENDERS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+// Backend accepts only ASCII hyphens — use '-' not '−'
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+// Backend enum: Male | Female | Other
+const GENDERS = ['Male', 'Female', 'Other'];
 const RELATIONS = ['Parent', 'Sibling', 'Spouse', 'Friend', 'Child', 'Other'];
 const STEPS = ['Identity', 'Medical', 'Emergency'];
 
@@ -27,6 +30,7 @@ const ArrowLeft = () => <svg width="14" height="14" fill="none" viewBox="0 0 24 
 const ShieldIcon = () => <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>;
 
 export default function PatientRegistration() {
+    const navigate = useNavigate();
     const [step, setStep] = useState(0);
     const [dir, setDir] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -48,8 +52,14 @@ export default function PatientRegistration() {
     const onSubmit = async (data) => {
         setLoading(true); setServerError('');
         try {
-            await registerPatient({ ...data, allergies, medications });
+            // All fields already snake_case — just convert arrays to comma strings
+            await registerPatient({
+                ...data,
+                allergies: allergies.join(', '),
+                current_medications: medications.join(', '),
+            });
             setSuccess(true);
+            setTimeout(() => navigate('/patient/dashboard'), 800);
         } catch (err) {
             setServerError(err.message);
         } finally {
@@ -80,9 +90,11 @@ export default function PatientRegistration() {
                                     <p className="t-heading" style={{ fontSize: '1rem', marginBottom: '2px' }}>Your account</p>
                                     <p className="t-muted">Create your patient identity on Qure.</p>
                                 </div>
-                                <FloatingLabelInput label="Full Name" placeholder="Your full name" error={errors.name?.message} value={watch('name') || ''} {...register('name')} />
+                                <FloatingLabelInput label="Full Name" placeholder="Your full name" error={errors.full_name?.message} value={watch('full_name') || ''} {...register('full_name')} />
                                 <FloatingLabelInput label="Email Address" type="email" placeholder="you@example.com" error={errors.email?.message} value={watch('email') || ''} {...register('email')} />
-                                <FloatingLabelInput label="Password" type="password" placeholder="Min 8 characters" hint="Choose a strong, memorable password." error={errors.password?.message} value={watch('password') || ''} {...register('password')} />
+                                <FloatingLabelInput label="Phone Number" type="tel" placeholder="10-digit mobile number" error={errors.phone?.message} value={watch('phone') || ''} {...register('phone')} />
+                                <FloatingLabelInput label="Age" type="number" placeholder="Your age" error={errors.age?.message} value={watch('age') || ''} {...register('age')} />
+                                <FloatingLabelInput label="Address" placeholder="Your full address" error={errors.address?.message} value={watch('address') || ''} {...register('address')} />
                             </>
                         )}
 
@@ -104,14 +116,14 @@ export default function PatientRegistration() {
                                             <button
                                                 key={bg}
                                                 type="button"
-                                                onClick={() => setValue('bloodGroup', bg)}
-                                                className={`option-pill ${watch('bloodGroup') === bg ? 'active' : ''}`}
+                                                onClick={() => setValue('blood_group', bg)}
+                                                className={`option-pill ${watch('blood_group') === bg ? 'active' : ''}`}
                                             >
                                                 {bg}
                                             </button>
                                         ))}
                                     </div>
-                                    {errors.bloodGroup && <p style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: '6px' }}>{errors.bloodGroup.message}</p>}
+                                    {errors.blood_group && <p style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: '6px' }}>{errors.blood_group.message}</p>}
                                 </div>
 
                                 {/* Gender */}
@@ -119,7 +131,7 @@ export default function PatientRegistration() {
                                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.01em', display: 'block', marginBottom: '8px' }}>
                                         Gender
                                     </label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                                         {GENDERS.map(g => (
                                             <button
                                                 key={g}
@@ -142,7 +154,7 @@ export default function PatientRegistration() {
                                     </label>
                                     <div style={{ position: 'relative' }}>
                                         <textarea
-                                            {...register('conditionNotes')}
+                                            {...register('condition_notes')}
                                             maxLength={500}
                                             rows={3}
                                             onChange={e => setNoteLen(e.target.value.length)}
@@ -169,7 +181,6 @@ export default function PatientRegistration() {
                                     <p className="t-muted">Who should we call in case of emergency?</p>
                                 </div>
 
-                                {/* Safe-zone card */}
                                 <div
                                     className="card-elevated"
                                     style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}
@@ -181,7 +192,7 @@ export default function PatientRegistration() {
                                         </span>
                                     </div>
 
-                                    <FloatingLabelInput label="Contact Name" placeholder="Full name" error={errors.emergencyName?.message} value={watch('emergencyName') || ''} {...register('emergencyName')} />
+                                    <FloatingLabelInput label="Contact Name" placeholder="Full name" error={errors.emergency_contact_name?.message} value={watch('emergency_contact_name') || ''} {...register('emergency_contact_name')} />
 
                                     <div>
                                         <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.01em', display: 'block', marginBottom: '8px' }}>
@@ -192,17 +203,16 @@ export default function PatientRegistration() {
                                                 <button
                                                     key={r}
                                                     type="button"
-                                                    onClick={() => setValue('emergencyRelation', r)}
-                                                    className={`option-pill ${watch('emergencyRelation') === r ? 'active' : ''}`}
+                                                    onClick={() => setValue('emergency_relation', r)}
+                                                    className={`option-pill ${watch('emergency_relation') === r ? 'active' : ''}`}
                                                 >
                                                     {r}
                                                 </button>
                                             ))}
                                         </div>
-                                        {errors.emergencyRelation && <p style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: '6px' }}>{errors.emergencyRelation.message}</p>}
                                     </div>
 
-                                    <FloatingLabelInput label="Emergency Phone" type="tel" placeholder="10-digit mobile number" error={errors.emergencyPhone?.message} value={watch('emergencyPhone') || ''} {...register('emergencyPhone')} />
+                                    <FloatingLabelInput label="Emergency Phone" type="tel" placeholder="10-digit mobile number" error={errors.emergency_contact_phone?.message} value={watch('emergency_contact_phone') || ''} {...register('emergency_contact_phone')} />
                                 </div>
 
                                 {serverError && (

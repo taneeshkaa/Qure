@@ -6,31 +6,30 @@ import 'react-toastify/dist/ReactToastify.css';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import ChemistNav from '../../components/ChemistNav';
 import useSocket from '../../hooks/useSocket';
+import { getChemistQueue, verifyAndDeliver } from '../../api/consultation';
 
-/* ── Mock hospital context ──────────────────────────────────────── */
-const HOSPITAL_ID = 'hosp_01';
+/* Chemist ID comes from the logged-in session */
+const HOSPITAL_ID = JSON.parse(localStorage.getItem('user') || '{}')?.hospital_id ?? null;
+const CHEMIST_ID = JSON.parse(localStorage.getItem('user') || '{}')?.chemist_id
+    ?? JSON.parse(localStorage.getItem('user') || '{}')?.id
+    ?? null;
 
-/* ── Mock initial prescription queue ──────────────────────────────*/
-const INITIAL_QUEUE = [
-    {
-        id: 'rx_001', tokenNumber: 18, prescriptionText: 'Tab. Amoxicillin 500mg — 1-0-1 × 5 days\nTab. Paracetamol 650mg — SOS for pain\nTab. Pantoprazole 40mg — 1-0-0 × 5 days\n\nAdvice: Plenty of fluids. Rest for 3 days.',
-        status: 'packing', timestamp: '09:02 AM',
-        patientName: 'Sunita Rao', patientPhone: '+91 97654 32100',
-        verified: false, mismatch: false,
-    },
-    {
-        id: 'rx_002', tokenNumber: 19, prescriptionText: 'Syp. Azithromycin 200mg/5ml — 10ml once daily × 3 days\nTab. Montair LC — 0-0-1 × 7 days\nNebulization with Budecort 0.5mg — BD\n\nAdvice: Avoid cold drinks. Follow up in 5 days.',
-        status: 'ready', timestamp: '09:24 AM',
-        patientName: 'Kartik Bose', patientPhone: '+91 96321 44500',
-        verified: true, mismatch: false,
-    },
-    {
-        id: 'rx_003', tokenNumber: 20, prescriptionText: 'Tab. Metformin 500mg — 1-0-1 (with meals)\nTab. Glimepiride 1mg — 1-0-0\nCap. Vitamin D3 60K — once weekly × 8 weeks\n\nTests: HbA1c after 3 months. Follow up in 1 month.',
-        status: 'pending', timestamp: '09:47 AM',
-        patientName: 'Ritu Verma', patientPhone: '+91 98123 00567',
-        verified: false, mismatch: false,
-    },
-];
+/* Map backend prescription shape → local queue shape */
+function mapRx(rx) {
+    return {
+        id: String(rx.id),
+        tokenNumber: rx.appointment?.token_number ?? rx.appointment_id,
+        prescriptionText: rx.prescription_text ?? '',
+        status: rx.status?.toLowerCase() ?? 'pending',
+        timestamp: rx.createdAt
+            ? new Date(rx.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+            : '—',
+        patientName: rx.appointment?.patient?.full_name ?? 'Unknown',
+        patientPhone: rx.appointment?.patient?.phone ?? '—',
+        verified: rx.verified ?? false,
+        mismatch: false,
+    };
+}
 
 const STATUS_CONFIG = {
     pending: { label: 'Pending', icon: '⏳', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', next: 'packing', nextLabel: '→ Start Packing' },
@@ -42,10 +41,31 @@ const COLUMN_ORDER = ['pending', 'packing', 'ready'];
 
 export default function ChemistDashboard() {
     const { socket, connected } = useSocket(HOSPITAL_ID);
-    const [queue, setQueue] = useState(INITIAL_QUEUE);
+    const [queue, setQueue] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [expandedId, setExpandedId] = useState(null);
     const [verifying, setVerifying] = useState(null);  // prescriptionId being verified
     const [nameInput, setNameInput] = useState('');
+
+    /* ── Load real queue from backend on mount ──────────────── */
+    useEffect(() => {
+        let cancelled = false;
+        setIsLoading(true);
+
+        getChemistQueue(CHEMIST_ID)
+            .then(res => {
+                if (cancelled) return;
+                const rows = res.data?.prescriptions ?? res.data ?? [];
+                setQueue(rows.map(mapRx));
+            })
+            .catch(err => {
+                if (cancelled) return;
+                toast.error(`⚠️ Failed to load queue: ${err.message}`, { autoClose: 6000 });
+            })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+
+        return () => { cancelled = true; };
+    }, []);
 
     /* ── Real-time prescription listener ─────────────────────────── */
     useEffect(() => {
@@ -79,12 +99,26 @@ export default function ChemistDashboard() {
     }, [socket]);
 
     /* ── Status toggle ───────────────────────────────────────────── */
-    const advanceStatus = (id) => {
-        setQueue(prev => prev.map(rx => {
-            if (rx.id !== id) return rx;
-            const nextStatus = STATUS_CONFIG[rx.status].next;
-            return nextStatus ? { ...rx, status: nextStatus } : rx;
-        }));
+    const advanceStatus = async (id) => {
+        const rx = queue.find(r => r.id === id);
+        if (!rx) return;
+        const nextStatus = STATUS_CONFIG[rx.status]?.next;
+        if (!nextStatus) return;
+
+        // Optimistic UI update first
+        setQueue(prev => prev.map(r =>
+            r.id === id ? { ...r, status: nextStatus } : r
+        ));
+
+        try {
+            await verifyAndDeliver(id, rx.patientName);
+        } catch (err) {
+            // Rollback on failure
+            setQueue(prev => prev.map(r =>
+                r.id === id ? { ...r, status: rx.status } : r
+            ));
+            toast.error(`⚠️ Status update failed: ${err.message}`);
+        }
     };
 
     /* ── Anti-scam verification ──────────────────────────────────── */

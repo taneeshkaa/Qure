@@ -24,18 +24,22 @@ export const doctorSchema = z.object({
 });
 
 export const patientSchema = z.object({
-    // Step 1
-    name: z.string().min(2, 'Name is required'),
+    // Step 1 — Identity
+    full_name: z.string().min(2, 'Name is required'),
     email: z.string().email('Enter a valid email'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    // Step 2
-    bloodGroup: z.string().min(1, 'Blood group is required'),
+    phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+    age: z.coerce.number({ invalid_type_error: 'Age must be a number' })
+        .int('Age must be a whole number')
+        .min(0, 'Age cannot be negative')
+        .max(150, 'Age must be realistic'),
+    address: z.string().min(5, 'Address must be at least 5 characters'),
+    // Step 2 — Medical
+    blood_group: z.string().min(1, 'Blood group is required'),
     gender: z.string().min(1, 'Gender is required'),
-    conditionNotes: z.string().max(500, 'Max 500 characters').optional(),
+    condition_notes: z.string().max(500, 'Max 500 characters').optional().or(z.literal('')),
     allergies: z.array(z.string()).optional(),
-    medications: z.array(z.string()).optional(),
-    // Step 3
-    emergencyName: z.string().min(2, 'Emergency contact name is required'),
-    emergencyRelation: z.string().min(1, 'Relation is required'),
-    emergencyPhone: z.string().min(10, 'Enter a 10-digit phone number').max(15),
+    current_medications: z.array(z.string()).optional(),
+    // Step 3 — Emergency
+    emergency_contact_name: z.string().min(2, 'Emergency contact name is required'),
+    emergency_contact_phone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
 });

@@ -4,63 +4,87 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import DoctorNav from '../../components/DoctorNav';
 import useSocket from '../../hooks/useSocket';
+import { getPatientCard, sendPrescription } from '../../api/consultation';
 
-/* ── Mock patient card data (replaced by getPatientCard(tokenId)) ─ */
-const MOCK_PATIENTS = {
-    tkn_001: {
-        tokenNumber: 21, name: 'Priya Sharma', age: 34, gender: 'Female',
-        bloodGroup: 'B+', allergies: ['Penicillin', 'Dust mites'],
-        chronicDiseases: ['Lumbar Spondylosis'],
-        problem: 'Recurring lower back pain for 2 weeks, especially while sitting. Pain radiates down to left leg occasionally. Severity: 6/10. No recent injury.',
-        phone: '+91 98765 43210',
-        attachments: [
-            { type: 'pdf', name: 'MRI_Lower_Spine.pdf', icon: '📄' },
-            { type: 'image', name: 'Prescription_Oct.jpg', icon: '🖼️' },
-        ],
-        bookedAt: 'Today, 09:14 AM', hospitalId: 'hosp_01',
-    },
-    tkn_002: {
-        tokenNumber: 22, name: 'Rahul Mehta', age: 52, gender: 'Male',
-        bloodGroup: 'O+', allergies: ['Aspirin'],
-        chronicDiseases: ['Hypertension', 'Type 2 Diabetes'],
-        problem: 'Chest heaviness and mild shortness of breath post-exercise. Symptoms started 5 days ago. BP reading at home: 148/96.',
-        phone: '+91 98234 11789',
-        attachments: [
-            { type: 'image', name: 'ECG_Report.jpg', icon: '🖼️' },
-        ],
-        bookedAt: 'Today, 09:28 AM', hospitalId: 'hosp_01',
-    },
-    tkn_003: {
-        tokenNumber: 23, name: 'Ananya Iyer', age: 27, gender: 'Female',
-        bloodGroup: 'A-', allergies: [],
-        chronicDiseases: ['Migraine (Chronic)'],
-        problem: 'Migraine headaches occurring 3-4 times a week with light sensitivity and nausea. Current medication (Sumatriptan) losing effectiveness.',
-        phone: '+91 99001 22334',
-        attachments: [],
-        bookedAt: 'Today, 09:41 AM', hospitalId: 'hosp_01',
-    },
-};
-
-/* Fallback generic patient */
+/* Fallback generic patient shown while loading or on error */
 const DEFAULT_PATIENT = {
-    tokenNumber: 99, name: 'Patient', age: 30, gender: 'Unknown',
+    tokenNumber: '—', name: 'Loading...', age: '—', gender: '—',
     bloodGroup: '—', allergies: [], chronicDiseases: [],
-    problem: 'No booking context available.',
-    phone: '—', attachments: [], bookedAt: '—', hospitalId: 'hosp_01',
+    problem: 'Fetching patient data...',
+    phone: '—', attachments: [], bookedAt: '—', hospital_id: null,
 };
+
+/* Map backend response shape → component shape */
+function mapPatient(data) {
+    if (!data) return DEFAULT_PATIENT;
+    return {
+        tokenNumber: data.token_number ?? data.id,
+        name: data.patient?.full_name ?? '—',
+        age: data.patient?.age ?? '—',
+        gender: data.patient?.gender ?? '—',
+        bloodGroup: data.patient?.blood_group ?? '—',
+        allergies: data.patient?.medicalProfile?.allergies
+            ? data.patient.medicalProfile.allergies.split(',').map(s => s.trim())
+            : [],
+        chronicDiseases: data.patient?.medicalProfile?.notes
+            ? [data.patient.medicalProfile.notes]
+            : [],
+        problem: data.condition_notes ?? 'No description provided.',
+        phone: data.patient?.phone ?? '—',
+        attachments: (data.attachments ?? []).map(a => ({
+            type: a.file_type?.split('/')[1] ?? 'file',
+            name: a.file_url?.split('/').pop() ?? 'attachment',
+            url: a.file_url,
+            icon: a.file_type?.startsWith('image') ? '🖼️' : '📄',
+        })),
+        bookedAt: data.appointment_date
+            ? new Date(data.appointment_date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+            : '—',
+        hospital_id: data.doctor?.hospital_id ?? null,
+        doctorId: data.doctor_id ?? null,
+        appointmentId: data.id ?? null,
+    };
+}
 
 export default function ConsultationHub() {
     const { tokenId } = useParams();
     const navigate = useNavigate();
-    const patient = MOCK_PATIENTS[tokenId] || DEFAULT_PATIENT;
 
-    const { socket, connected } = useSocket(patient.hospitalId);
+    const [patient, setPatient] = useState(DEFAULT_PATIENT);
+    const [loadError, setLoadError] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+
+    const { socket, connected } = useSocket(patient.hospital_id);
 
     const [prescription, setPrescription] = useState('');
     const [sendStatus, setSendStatus] = useState('idle'); // idle | sending | sent | error
+    const [sendError, setSendError] = useState('');
     const [draftSaved, setDraftSaved] = useState(false);
     const [charCount, setCharCount] = useState(0);
     const textareaRef = useRef(null);
+
+    /* ── Fetch patient card from backend on mount ─────────────── */
+    useEffect(() => {
+        let cancelled = false;
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+        setIsLoading(true);
+        setLoadError('');
+
+        getPatientCard(tokenId, user.id)
+            .then(res => {
+                if (cancelled) return;
+                setPatient(mapPatient(res.data?.appointment ?? res.data));
+            })
+            .catch(err => {
+                if (cancelled) return;
+                setLoadError(err.message || 'Failed to load patient data.');
+                // Keep DEFAULT_PATIENT so UI doesn't crash
+            })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+
+        return () => { cancelled = true; };
+    }, [tokenId]);
 
     /* Save draft to localStorage on network drop */
     useEffect(() => {
@@ -84,12 +108,15 @@ export default function ConsultationHub() {
             return;
         }
         setSendStatus('sending');
+        setSendError('');
 
         try {
-            /* In production: await sendPrescription(tokenId, prescription) */
-            await new Promise(r => setTimeout(r, 900));
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-            /* Emit real-time event to chemist */
+            // Save prescription to backend
+            await sendPrescription(tokenId, user.id, prescription);
+
+            // Emit real-time event to chemist via WebSocket
             if (socket && connected) {
                 socket.emit('new-prescription', {
                     tokenId,
@@ -97,7 +124,7 @@ export default function ConsultationHub() {
                     patientName: patient.name,
                     patientPhone: patient.phone,
                     prescriptionText: prescription,
-                    hospitalId: patient.hospitalId,
+                    hospitalId: patient.hospital_id,
                     timestamp: new Date().toISOString(),
                 });
             }
@@ -105,8 +132,9 @@ export default function ConsultationHub() {
             localStorage.removeItem(`draft_${tokenId}`);
             setDraftSaved(false);
             setSendStatus('sent');
-        } catch {
+        } catch (err) {
             setSendStatus('error');
+            setSendError(err.message || 'Failed to send prescription. Please retry.');
         }
     };
 

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import PulseButton from '../components/PulseButton';
+import { loginHospital } from '../api/auth';
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -15,12 +16,29 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!email || !password) { setError('Please fill in all fields.'); return; }
+
+        // Patient login not yet implemented in backend
+        if (role === 'patient') {
+            setError('Patient login is not yet available. Please contact your hospital.');
+            return;
+        }
+
         setLoading(true);
         setError('');
         try {
-            // TODO: hook up to your /auth/login endpoint
-            await new Promise(r => setTimeout(r, 1200)); // simulate API
-            navigate('/');
+            // POST /api/v1/admin/login
+            const res = await loginHospital(email.trim(), password);
+            // Persist session
+            localStorage.setItem('token', res.token);
+            localStorage.setItem('user', JSON.stringify(res.data?.admin || {}));
+
+            // Navigate by role
+            const userRole = res.data?.admin?.role;
+            if (userRole === 'SUPER_ADMIN') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/doctor/dashboard');
+            }
         } catch (err) {
             setError(err.message || 'Invalid credentials. Please try again.');
         } finally {

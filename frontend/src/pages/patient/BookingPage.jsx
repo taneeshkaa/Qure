@@ -5,6 +5,7 @@ import SparkleCanvas from '../../components/SparkleCanvas';
 import { PatientNav } from './PatientDashboard';
 import { getDoctorById, getHospitalById } from '../../data/mockData';
 import { generateSlots } from '../../data/searchData';
+import { bookAppointment } from '../../api/search';
 
 function StarRating({ rating, size = 12 }) {
     return <div style={{ display: 'flex', gap: '2px' }}>{[1, 2, 3, 4, 5].map(i => <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= Math.round(rating) ? '#f59e0b' : '#d1fae5'}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}</div>;
@@ -23,6 +24,7 @@ export default function BookingPage() {
     const [selectedDay, setSelectedDay] = useState(0);
     const [isBooking, setIsBooking] = useState(false);
     const [slotError, setSlotError] = useState('');
+    const [bookError, setBookError] = useState('');
 
     if (!doc) {
         return (
@@ -48,22 +50,37 @@ export default function BookingPage() {
         }
         setSlotError('');
         setConditionError(false);
+        setBookError('');
         setIsBooking(true);
 
-        // Simulate API delay
-        await new Promise(r => setTimeout(r, 1400));
+        try {
+            // Read patient session if available
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-        // Navigate to token card with booking data
-        const tokenNum = Math.floor(Math.random() * 40) + 1;
-        navigate('/patient/token', {
-            state: {
-                token: tokenNum,
-                doctor: doc,
-                hospital: hospital?.name,
-                slot: selectedSlot,
-                condition: condition.trim(),
-            }
-        });
+            const res = await bookAppointment({
+                doctor_id: parseInt(doc.id, 10) || doc.id,
+                patient_id: user.id ?? null,
+                appointment_date: selectedSlot.isoDate ?? selectedSlot.date,
+                slot_time: selectedSlot.time,
+                condition_notes: condition.trim(),
+            });
+
+            // Navigate to token card with server-returned data
+            const appt = res.data?.appointment ?? {};
+            navigate('/patient/token', {
+                state: {
+                    token: appt.token_number ?? Math.floor(Math.random() * 40) + 1,
+                    appointmentId: appt.id,
+                    doctor: doc,
+                    hospital: hospital?.name,
+                    slot: selectedSlot,
+                    condition: condition.trim(),
+                }
+            });
+        } catch (err) {
+            setBookError(err.message || 'Booking failed. Please try again.');
+            setIsBooking(false);
+        }
     };
 
     return (
@@ -229,6 +246,13 @@ export default function BookingPage() {
                                 </>
                             ) : '🎫 Confirm Booking →'}
                         </motion.button>
+                        {bookError && (
+                            <motion.p
+                                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                                style={{ fontSize: '0.8125rem', color: '#dc2626', fontWeight: 500, textAlign: 'center', padding: '8px 12px', background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: '8px', margin: '0' }}>
+                                ⚠️ {bookError}
+                            </motion.p>
+                        )}
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>You'll receive a digital token immediately</p>
                     </div>
                 </div>

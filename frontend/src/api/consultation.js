@@ -1,25 +1,28 @@
 import api from './axios';
 
-// ─── Doctor — get queued tokens ──────────────────────────────────
-export const getDoctorQueue = (doctorId) => api.get(`/doctor/queue/${doctorId}`);
-
 // ─── Doctor — get patient card for a token ───────────────────────
-export const getPatientCard = (tokenId) => api.get(`/doctor/patient-card/${tokenId}`);
+// Backend: GET /api/v1/doctor/patient-card/:token?doctor_id=<id>
+export const getPatientCard = (tokenId, doctorId) => {
+    const params = doctorId ? `?doctor_id=${doctorId}` : '';
+    return api.get(`/doctor/patient-card/${tokenId}${params}`);
+};
+
+// ─── Doctor — get patient file attachments ───────────────────────
+// Backend: GET /api/v1/doctor/attachments/:apptId
+export const getPatientAttachments = (apptId) => api.get(`/doctor/attachments/${apptId}`);
 
 // ─── Doctor — send prescription to chemist ───────────────────────
-export const sendPrescription = (tokenId, prescriptionText) =>
-    api.post('/doctor/prescription', { tokenId, prescriptionText });
-
-// ─── Doctor — mark token as complete ─────────────────────────────
-export const completeToken = (tokenId) => api.patch(`/doctor/token/${tokenId}/complete`);
+// Backend: POST /api/v1/doctor/prescribe
+// Body: { token_id, doctor_id, prescription_text }
+export const sendPrescription = (tokenId, doctorId, prescriptionText) =>
+    api.post('/doctor/prescribe', { token_id: tokenId, doctor_id: doctorId, prescription_text: prescriptionText });
 
 // ─── Chemist — get prescription queue ───────────────────────────
-export const getChemistQueue = (hospitalId) => api.get(`/chemist/queue/${hospitalId}`);
+// Backend: GET /api/v1/chemist/queue?chemist_id=<id>
+export const getChemistQueue = (chemistId) => api.get(`/chemist/queue?chemist_id=${chemistId}`);
 
-// ─── Chemist — update prescription status ───────────────────────
-export const updatePrescriptionStatus = (prescriptionId, status) =>
-    api.patch(`/chemist/prescription/${prescriptionId}/status`, { status });
-
-// ─── Chemist — verify patient identity (reveal name/phone) ───────
-export const verifyPatient = (prescriptionId) =>
-    api.get(`/chemist/prescription/${prescriptionId}/verify`);
+// ─── Chemist — verify patient and deliver medicine ────────────────
+// Backend: PATCH /api/v1/chemist/verify/:id
+// Body: { patient_name } (anti-scam verification input)
+export const verifyAndDeliver = (prescriptionId, patientName) =>
+    api.patch(`/chemist/verify/${prescriptionId}`, { patient_name: patientName });
