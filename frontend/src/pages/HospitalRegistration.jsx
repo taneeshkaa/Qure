@@ -66,7 +66,7 @@ export default function HospitalRegistration() {
     const [doctorErrors, setDoctorErrors] = useState({});
 
     const { hospitalData } = useFormStore();
-    const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+    const { register, handleSubmit, formState: { errors }, setValue, watch, trigger } = useForm({
         resolver: zodResolver(hospitalSchema),
         defaultValues: hospitalData,
         mode: 'onTouched',
@@ -90,7 +90,11 @@ export default function HospitalRegistration() {
         return Object.keys(errs).length === 0;
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
+        if (step === 0) {
+            const isValid = await trigger(['state', 'city', 'hospitalName', 'address']);
+            if (!isValid) return;
+        }
         if (step === 1 && !validateDoctors()) return;
         goTo(step + 1);
     };
@@ -99,10 +103,30 @@ export default function HospitalRegistration() {
         if (!validateDoctors()) return;
         setLoading(true); setServerError('');
         try {
-            await registerHospital({ ...data, doctors });
+            const payload = {
+                state: data.state,
+                city: data.city,
+                hospital_name: data.hospitalName,
+                address: data.address,
+                owner_name: data.ownerName,
+                contact_person: data.contactPerson,
+                phone_1: data.primaryPhone.replace(/\D/g, ''),
+                phone_2: data.secondaryPhone ? data.secondaryPhone.replace(/\D/g, '') : undefined,
+                email: data.email,
+                chemist_staff_password: data.password,
+                license_number: data.licenseNumber,
+                chemist_shop_name: data.chemistShopName,
+                doctors: doctors.map(doc => ({
+                    full_name: doc.name,
+                    specialization: doc.specialty,
+                    experience: 0
+                }))
+            };
+
+            await registerHospital(payload);
             setSuccess(true);
         } catch (err) {
-            setServerError(err.message);
+            setServerError(err.response?.data?.message || err.message);
         } finally {
             setLoading(false);
         }
@@ -254,6 +278,10 @@ export default function HospitalRegistration() {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                     <FloatingLabelInput label="Owner Name" placeholder="Full name" error={errors.ownerName?.message} value={watch('ownerName') || ''} {...register('ownerName')} />
                                     <FloatingLabelInput label="Contact Person" placeholder="Point of contact" error={errors.contactPerson?.message} value={watch('contactPerson') || ''} {...register('contactPerson')} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <FloatingLabelInput label="License Number" placeholder="e.g. HOS-12345" error={errors.licenseNumber?.message} value={watch('licenseNumber') || ''} {...register('licenseNumber')} />
+                                    <FloatingLabelInput label="Chemist Shop Name" placeholder="e.g. Apollo Pharmacy" error={errors.chemistShopName?.message} value={watch('chemistShopName') || ''} {...register('chemistShopName')} />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                     <MaskedPhoneInput label="Primary Phone" error={errors.primaryPhone?.message} value={watch('primaryPhone') || ''} {...register('primaryPhone')} />

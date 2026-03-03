@@ -16,6 +16,8 @@ export const hospitalSchema = z.object({
     secondaryPhone: z.string().min(10).max(15).optional().or(z.literal('')),
     email: z.string().email('Enter a valid email'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
+    licenseNumber: z.string().min(3, 'License number is required'),
+    chemistShopName: z.string().min(2, 'Chemist shop name is required'),
 });
 
 export const doctorSchema = z.object({

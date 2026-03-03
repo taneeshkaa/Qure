@@ -37,11 +37,12 @@ const MaskedPhoneInput = forwardRef(function MaskedPhoneInput(
             <motion.div
                 animate={error ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
                 transition={{ duration: 0.35 }}
+                className={error ? 'has-error' : ''}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
                     borderRadius: '10px',
-                    border: `1px solid ${error ? 'var(--error)' : focused ? 'var(--accent)' : 'var(--border)'}`,
+                    border: `1.5px solid ${error ? 'var(--error)' : focused ? 'var(--accent)' : 'var(--border)'}`,
                     background: 'var(--bg-input)',
                     boxShadow: focused ? (error ? '0 0 0 3px rgba(244,63,94,0.12)' : '0 0 0 3px var(--accent-glow)') : 'none',
                     overflow: 'hidden',
@@ -49,15 +50,16 @@ const MaskedPhoneInput = forwardRef(function MaskedPhoneInput(
                 }}
             >
                 <span style={{
-                    padding: '0 12px',
-                    fontSize: '0.8125rem',
+                    padding: '0 1rem',
+                    fontSize: '0.875rem',
                     fontWeight: 600,
                     color: 'var(--accent-light)',
-                    borderRight: '1px solid var(--border)',
+                    borderRight: '1.5px solid var(--border)',
                     alignSelf: 'stretch',
                     display: 'flex',
                     alignItems: 'center',
                     flexShrink: 0,
+                    background: 'var(--bg-elevated)',
                 }}>
                     +91
                 </span>
@@ -72,7 +74,7 @@ const MaskedPhoneInput = forwardRef(function MaskedPhoneInput(
                     onChange={handleChange}
                     style={{
                         flex: 1,
-                        padding: '0.75rem',
+                        padding: '0.75rem 1rem',
                         background: 'transparent',
                         border: 'none',
                         outline: 'none',

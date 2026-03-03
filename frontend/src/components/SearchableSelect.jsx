@@ -32,7 +32,7 @@ export default function SearchableSelect({ label, options = [], value, onChange,
     }, []);
 
     return (
-        <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div ref={ref} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {label && (
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: error ? 'var(--error)' : 'var(--text-secondary)', letterSpacing: '0.01em' }}>
                     {label}
@@ -71,7 +71,7 @@ export default function SearchableSelect({ label, options = [], value, onChange,
                             position: 'absolute',
                             zIndex: 100,
                             width: '100%',
-                            marginTop: '64px',
+                            top: 'calc(100% + 4px)',
                             background: 'var(--bg-elevated)',
                             border: '1px solid var(--border)',
                             borderRadius: '12px',

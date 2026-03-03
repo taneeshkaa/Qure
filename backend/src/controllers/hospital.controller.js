@@ -77,6 +77,8 @@ const registerHospital = catchAsync(async (req, res, next) => {
 
         // If doctors array is provided, bulk-create them
         let createdDoctors = [];
+        const allSlotData = [];
+
         if (doctors && doctors.length > 0) {
             for (const doc of doctors) {
                 const createdDoctor = await tx.doctor.create({
@@ -88,10 +90,9 @@ const registerHospital = catchAsync(async (req, res, next) => {
                     },
                 });
 
-                // Create default weekly slots (Mon–Sat, 09:00–17:00, 30 min)
-                const slotData = [];
+                // Prepare default weekly slots (Mon–Sat, 09:00–17:00, 30 min)
                 for (let day = 1; day <= 6; day++) {
-                    slotData.push({
+                    allSlotData.push({
                         doctor_id: createdDoctor.id,
                         day_of_week: day,
                         start_time: "09:00",
@@ -99,14 +100,18 @@ const registerHospital = catchAsync(async (req, res, next) => {
                         slot_duration_minutes: 30,
                     });
                 }
-                await tx.doctorSlot.createMany({ data: slotData });
 
                 createdDoctors.push(createdDoctor);
+            }
+
+            // Create all slots in one bulk operation outside the loop
+            if (allSlotData.length > 0) {
+                await tx.doctorSlot.createMany({ data: allSlotData });
             }
         }
 
         return { hospital, createdDoctors };
-    });
+    }, { timeout: 10000 });
 
     // Step 4 (outside main tx): Create the Chemist for this hospital
     const staffHash = crypto
