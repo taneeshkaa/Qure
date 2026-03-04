@@ -154,12 +154,12 @@ function Navbar() {
                 ease: hidden ? [0.4, 0, 0.2, 1] : [0.22, 1, 0.36, 1],
             }}
             style={{
-                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-                background: scrolled ? 'rgba(255,255,255,0.85)' : 'transparent',
-                backdropFilter: scrolled ? 'blur(22px) saturate(180%)' : 'none',
-                WebkitBackdropFilter: scrolled ? 'blur(22px) saturate(180%)' : 'none',
-                borderBottom: scrolled ? '1px solid rgba(11,158,135,0.13)' : '1px solid transparent',
-                boxShadow: scrolled ? '0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 24px rgba(11,120,100,0.08)' : 'none',
+                position: 'sticky', top: 0, left: 0, right: 0, zIndex: 50,
+                background: scrolled ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.92)',
+                backdropFilter: 'blur(22px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+                borderBottom: scrolled ? '1px solid rgba(11,158,135,0.13)' : '1px solid rgba(11,158,135,0.08)',
+                boxShadow: scrolled ? '0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 24px rgba(11,120,100,0.08)' : '0 1px 0 rgba(255,255,255,0.5) inset',
                 padding: '0 32px', height: '62px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 transition: 'background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
             }}
@@ -277,14 +277,232 @@ function Navbar() {
     );
 }
 
-/* ── Hero blobs ──────────────────────────────────────────── */
-function HeroBlobBg() {
+/* ── Hero Section ────────────────────────────────────────── */
+const HERO_STATS = [
+    { value: '10k+', label: 'Patient Records' },
+    { value: '500+', label: 'Hospitals' },
+    { value: '99.9%', label: 'Uptime' },
+    { value: '<1s', label: 'Avg Load Time' },
+];
+
+function HeroStatItem({ value, label, last }) {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true });
+    const displayed = useCountUp(value, inView);
     return (
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, pointerEvents: 'none' }}>
-            <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }} transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '-100px', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '800px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(11,158,135,0.1) 0%,transparent 65%)' }} />
-            <motion.div animate={{ y: [0, -22, 0], scale: [1, 1.07, 1] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '5%', right: '-80px', width: '420px', height: '420px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(52,217,190,0.13) 0%,transparent 70%)' }} />
-            <motion.div animate={{ y: [0, 18, 0], scale: [1, 0.93, 1] }} transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }} style={{ position: 'absolute', bottom: '-40px', left: '-100px', width: '480px', height: '480px', borderRadius: '50%', background: 'radial-gradient(circle,rgba(11,158,135,0.08) 0%,transparent 70%)' }} />
+        <div ref={ref} style={{
+            textAlign: 'left',
+            paddingRight: last ? 0 : '28px',
+            marginRight: last ? 0 : '28px',
+            borderRight: last ? 'none' : '1px solid rgba(255,255,255,0.2)',
+        }}>
+            <p style={{ fontSize: 'clamp(1.25rem,2vw,1.625rem)', fontWeight: 800, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{displayed}</p>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '3px', fontWeight: 500, whiteSpace: 'nowrap' }}>{label}</p>
         </div>
+    );
+}
+
+function HeroSection() {
+    return (
+        <section style={{
+            padding: '30px 30px 30px',   /* 30px gap on all sides */
+            position: 'relative',
+            zIndex: 2,
+        }}>
+            {/* Outer wrapper — rounded corners + shadow */}
+            <div style={{
+                borderRadius: '20px',
+                overflow: 'hidden',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+                position: 'relative',
+                height: 'calc(100vh - 62px - 60px)',   /* viewport minus navbar minus top+bottom margin */
+                minHeight: '560px',
+            }}>
+                {/* Ken Burns image */}
+                <motion.div
+                    initial={reduced ? {} : { scale: 1.08 }}
+                    animate={{ scale: 1.0 }}
+                    transition={{ duration: 16, ease: 'linear' }}
+                    style={{
+                        position: 'absolute', inset: '-4%',
+                        backgroundImage: 'url(https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=1400)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center 30%',
+                        willChange: 'transform',
+                        filter: 'blur(2.5px)',
+                    }}
+                />
+
+                {/* Gradient overlays — left dark band + bottom vignette */}
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(90deg, rgba(5,18,14,0.88) 0%, rgba(5,18,14,0.6) 45%, rgba(5,18,14,0.15) 70%, transparent 100%)',
+                    pointerEvents: 'none',
+                }} />
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(0deg, rgba(5,18,14,0.75) 0%, rgba(5,18,14,0.2) 35%, transparent 60%)',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* ── Content — bottom left ── */}
+                <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0,
+                    padding: '48px 52px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                    gap: '0',
+                }}>
+                    {/* Top badge */}
+                    <motion.div
+                        initial={reduced ? {} : { opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '7px',
+                            padding: '5px 13px',
+                            background: 'rgba(11,158,135,0.25)',
+                            border: '1px solid rgba(11,209,180,0.4)',
+                            borderRadius: '20px',
+                            marginBottom: '18px',
+                        }}
+                    >
+                        <motion.span
+                            animate={{ opacity: [1, 0.3, 1] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                            style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d9be', flexShrink: 0, display: 'inline-block' }}
+                        />
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.01em' }}>Now in Beta · Join 500+ hospitals on Qure</span>
+                    </motion.div>
+
+                    {/* Headline */}
+                    <h1 style={{
+                        fontSize: 'clamp(2.25rem,4.5vw,3.75rem)',
+                        fontWeight: 800,
+                        letterSpacing: '-0.04em',
+                        lineHeight: 1.07,
+                        color: '#ffffff',
+                        marginBottom: '16px',
+                        maxWidth: '680px',
+                    }}>
+                        <motion.span
+                            initial={reduced ? {} : { opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                            style={{ display: 'block' }}
+                        >Healthcare management,</motion.span>
+                        <motion.span
+                            initial={reduced ? {} : { opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                            style={{ display: 'block', background: 'linear-gradient(90deg,#34d9be,#7ef7e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+                        >simplified for India.</motion.span>
+                    </h1>
+
+                    {/* Subtext */}
+                    <motion.p
+                        initial={reduced ? {} : { opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.55, delay: 0.44, ease: [0.22, 1, 0.36, 1] }}
+                        style={{
+                            fontSize: '1.0625rem', color: 'rgba(255,255,255,0.7)',
+                            lineHeight: 1.72, maxWidth: '500px', marginBottom: '28px',
+                        }}
+                    >
+                        Qure connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
+                    </motion.p>
+
+                    {/* CTA button */}
+                    <motion.div
+                        initial={reduced ? {} : { opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.56, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ marginBottom: '36px' }}
+                    >
+                        <Link to="/register" style={{ textDecoration: 'none' }}>
+                            <motion.button
+                                whileHover={{ scale: 1.04, y: -2, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}
+                                whileTap={{ scale: 0.97 }}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '9px',
+                                    padding: '14px 28px',
+                                    background: '#ffffff',
+                                    color: '#0b1a17',
+                                    border: 'none',
+                                    borderRadius: '50px',
+                                    fontSize: '1rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: 'Inter,sans-serif',
+                                    boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+                                    letterSpacing: '-0.01em',
+                                }}
+                            >
+                                Get started free
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                            </motion.button>
+                        </Link>
+                    </motion.div>
+
+                    {/* Inline stats */}
+                    <motion.div
+                        initial={reduced ? {} : { opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0' }}
+                    >
+                        {HERO_STATS.map((s, i) => (
+                            <HeroStatItem key={s.label} {...s} last={i === HERO_STATS.length - 1} />
+                        ))}
+                    </motion.div>
+                </div>
+
+                {/* ── Glassmorphic pill — bottom right ── */}
+                <motion.div
+                    initial={reduced ? {} : { opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.55, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                        position: 'absolute', bottom: '44px', right: '44px',
+                        background: 'rgba(255,255,255,0.14)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255,255,255,0.28)',
+                        borderRadius: '18px',
+                        padding: '16px 20px',
+                        display: 'flex', flexDirection: 'column', gap: '8px',
+                        minWidth: '210px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Mini hospital icon avatars */}
+                        {['A', 'F', 'M'].map((initial, idx) => (
+                            <div key={idx} style={{
+                                width: '28px', height: '28px', borderRadius: '50%',
+                                background: `linear-gradient(135deg, ${['#0b9e87', '#12b89e', '#34d9be'][idx]}, ${['#34d9be', '#0b9e87', '#12b89e'][idx]})`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.6875rem', fontWeight: 800, color: 'white',
+                                border: '2px solid rgba(255,255,255,0.3)',
+                                marginLeft: idx > 0 ? '-8px' : 0,
+                                flexShrink: 0,
+                                position: 'relative', zIndex: 3 - idx,
+                            }}>{initial}</div>
+                        ))}
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#fff', marginLeft: '4px' }}>500+ Verified</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>Hospitals on Qure</span>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
+                            ))}
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </section>
     );
 }
 
@@ -481,50 +699,7 @@ export default function LandingPage() {
             <Navbar />
 
             {/* ── HERO ─────────────────────────────────────────── */}
-            <section style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '100px 24px 60px', position: 'relative', overflow: 'hidden' }}>
-                <HeroBlobBg />
-                <div style={{ position: 'relative', zIndex: 1, maxWidth: '740px' }}>
-                    <motion.div initial={reduced ? {} : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-                        <motion.div className="hero-badge"
-                            animate={{ boxShadow: ['0 0 0 0 rgba(11,158,135,0)', '0 0 0 8px rgba(11,158,135,0.12)', '0 0 0 0 rgba(11,158,135,0)'] }}
-                            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                            Now in Beta · Join 500+ hospitals on Qure
-                        </motion.div>
-                    </motion.div>
-
-                    <h1 style={{ fontSize: 'clamp(2.25rem,5vw,3.75rem)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1.08, marginBottom: '22px', color: 'var(--text-primary)' }}>
-                        <WordReveal text="Healthcare management," delay={0.12} /><br />
-                        <span className="gradient-text"><WordReveal text="simplified for India." delay={0.35} /></span>
-                    </h1>
-
-                    <motion.p initial={reduced ? {} : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.65 }} className="t-body" style={{ fontSize: '1.0625rem', maxWidth: '520px', margin: '0 auto 36px', lineHeight: 1.78 }}>
-                        Qure connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
-                    </motion.p>
-
-                    <motion.div initial={reduced ? {} : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.82 }} style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <Link to="/register" style={{ textDecoration: 'none' }}>
-                            <motion.button whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }}
-                                style={{ padding: '14px 30px', background: 'linear-gradient(135deg,#0b9e87,#0ab29a,#12c9ae)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 6px 22px rgba(11,158,135,0.38)', display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', overflow: 'hidden' }}>
-                                Get started free
-                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                            </motion.button>
-                        </Link>
-                        <Link to="/login" style={{ textDecoration: 'none' }}>
-                            <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.98 }} className="btn-secondary" style={{ padding: '14px 28px', fontSize: '1rem', width: 'auto' }}>Sign in</motion.button>
-                        </Link>
-                    </motion.div>
-                    <motion.p initial={reduced ? {} : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }} style={{ marginTop: '28px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                        HIPAA-aligned · No credit card required · Free for the first 30 days
-                    </motion.p>
-                </div>
-
-                {/* Glass stats strip */}
-                <motion.div initial={reduced ? {} : { opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 1.1 }}
-                    style={{ position: 'relative', zIndex: 1, display: 'flex', marginTop: '64px', background: 'rgba(255,255,255,0.78)', border: '1.5px solid rgba(11,158,135,0.18)', borderRadius: '18px', overflow: 'hidden', boxShadow: '0 8px 40px rgba(11,120,100,0.1), inset 0 1px 0 rgba(255,255,255,0.9)', backdropFilter: 'blur(20px)' }}>
-                    {stats.map((s, i) => <StatItem key={s.label} {...s} last={i === stats.length - 1} />)}
-                </motion.div>
-            </section>
+            <HeroSection />
 
             {/* ── MARQUEE ───────────────────────────────────────── */}
             <div style={{ background: 'white', borderTop: '1px solid rgba(11,158,135,0.1)', borderBottom: '1px solid rgba(11,158,135,0.1)', padding: '8px 0 0', position: 'relative', zIndex: 2 }}>
