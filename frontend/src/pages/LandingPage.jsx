@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, useInView, useAnimation, AnimatePresence } from 'framer-motion';
 import SparkleCanvas from '../components/SparkleCanvas';
 
@@ -85,62 +85,190 @@ function Avatar({ initials, size = 44 }) {
 }
 
 /* ── Navbar ──────────────────────────────────────────────── */
+function NavLink({ to, label, isActive }) {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <Link
+            to={to}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                fontSize: '0.875rem', fontWeight: 500, textDecoration: 'none',
+                padding: '5px 13px', borderRadius: '20px', position: 'relative',
+                color: isActive ? 'var(--accent-dark)' : hovered ? 'var(--accent)' : 'var(--text-secondary)',
+                background: isActive ? 'rgba(11,158,135,0.1)' : 'transparent',
+                border: isActive ? '1px solid rgba(11,158,135,0.22)' : '1px solid transparent',
+                transition: 'color 0.2s, background 0.2s, border-color 0.2s',
+                display: 'inline-block',
+            }}
+        >
+            {label}
+            {/* Slide-in underline from left */}
+            <span style={{
+                position: 'absolute', bottom: '2px', left: '13px', right: '13px',
+                height: '1.5px', borderRadius: '2px',
+                background: 'var(--accent)',
+                transformOrigin: 'left',
+                transform: (hovered && !isActive) ? 'scaleX(1)' : 'scaleX(0)',
+                transition: 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+                pointerEvents: 'none',
+            }} />
+        </Link>
+    );
+}
+
 function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [hidden, setHidden] = useState(false);
     const lastY = useRef(0);
+    const location = useLocation();
+
     useEffect(() => {
         const fn = () => {
             const y = window.scrollY;
             setScrolled(y > 12);
-            setHidden(y > lastY.current && y > 80);
+            // Hide on scroll down, instantly reappear on scroll up
+            if (y > lastY.current && y > 80) {
+                setHidden(true);
+            } else if (y < lastY.current) {
+                setHidden(false);
+            }
             lastY.current = y;
         };
         window.addEventListener('scroll', fn, { passive: true });
         return () => window.removeEventListener('scroll', fn);
     }, []);
+
+    const navLinks = [
+        { label: 'Hospitals', to: '/hospitals' },
+        { label: 'Doctors', to: '/doctors' },
+        { label: 'How it works', to: '/how-it-works' },
+        { label: 'About', to: '/register' },
+    ];
+
     return (
         <motion.nav
-            animate={{ y: hidden ? -80 : 0, opacity: hidden ? 0 : 1 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            animate={{ y: hidden ? -80 : 0 }}
+            transition={{
+                duration: hidden ? 0.35 : 0.18,
+                ease: hidden ? [0.4, 0, 0.2, 1] : [0.22, 1, 0.36, 1],
+            }}
             style={{
                 position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-                background: scrolled ? 'rgba(255,255,255,0.82)' : 'transparent',
-                backdropFilter: scrolled ? 'blur(20px)' : 'none',
-                WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-                borderBottom: scrolled ? '1px solid rgba(11,158,135,0.12)' : '1px solid transparent',
-                boxShadow: scrolled ? '0 2px 20px rgba(11,120,100,0.07)' : 'none',
-                padding: '0 32px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                transition: 'background 0.3s, border-color 0.3s, box-shadow 0.3s, backdrop-filter 0.3s',
+                background: scrolled ? 'rgba(255,255,255,0.85)' : 'transparent',
+                backdropFilter: scrolled ? 'blur(22px) saturate(180%)' : 'none',
+                WebkitBackdropFilter: scrolled ? 'blur(22px) saturate(180%)' : 'none',
+                borderBottom: scrolled ? '1px solid rgba(11,158,135,0.13)' : '1px solid transparent',
+                boxShadow: scrolled ? '0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 24px rgba(11,120,100,0.08)' : 'none',
+                padding: '0 32px', height: '62px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                transition: 'background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
             }}
         >
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            {/* Logo */}
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', flexShrink: 0 }}>
                 <div className="logo-mark">
                     <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
                 </div>
                 <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>Qure</span>
+                {/* Teal BETA badge — intentional, not grey */}
                 <motion.span
-                    animate={{ boxShadow: ['0 0 0 0 rgba(11,158,135,0)', '0 0 0 5px rgba(11,158,135,0.15)', '0 0 0 0 rgba(11,158,135,0)'] }}
+                    animate={{ boxShadow: ['0 0 0 0 rgba(11,158,135,0)', '0 0 0 5px rgba(11,158,135,0.18)', '0 0 0 0 rgba(11,158,135,0)'] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{ padding: '2px 7px', background: 'rgba(11,158,135,0.08)', border: '1px solid rgba(11,158,135,0.25)', borderRadius: '20px', fontSize: '0.625rem', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.08em' }}
+                    style={{
+                        padding: '2px 8px',
+                        background: 'linear-gradient(135deg, rgba(11,158,135,0.18) 0%, rgba(52,217,190,0.14) 100%)',
+                        border: '1px solid rgba(11,158,135,0.35)',
+                        borderRadius: '20px',
+                        fontSize: '0.6rem',
+                        fontWeight: 800,
+                        color: 'var(--accent-dark)',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                    }}
                 >BETA</motion.span>
             </Link>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {[{ label: 'Hospitals', to: '/hospitals' }, { label: 'Doctors', to: '/doctors' }, { label: 'How it works', to: '/how-it-works' }, { label: 'About', to: '/register' }].map(link => (
-                    <Link key={link.label} to={link.to} style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', textDecoration: 'none', padding: '6px 14px', borderRadius: '8px', transition: 'color 0.15s, background 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(11,158,135,0.07)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
-                    >{link.label}</Link>
+
+            {/* Nav links */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                {navLinks.map(link => (
+                    <NavLink
+                        key={link.label}
+                        to={link.to}
+                        label={link.label}
+                        isActive={location.pathname === link.to}
+                    />
                 ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Link to="/login"><button className="btn-ghost" style={{ padding: '8px 18px', fontSize: '0.875rem', width: 'auto' }}>Sign in</button></Link>
-                <Link to="/register">
-                    <button style={{ padding: '8px 20px', background: 'linear-gradient(135deg,#0b9e87,#0ab29a)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 3px 12px rgba(11,158,135,0.3)', position: 'relative', overflow: 'hidden', transition: 'box-shadow 0.2s, transform 0.15s' }}
-                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(11,158,135,0.45)'; e.currentTarget.style.transform = 'translateY(-1px)'; const s = e.currentTarget.querySelector('.shimmer'); if (s) { s.style.left = '160%'; s.style.transition = 'left 0.5s ease'; } }}
-                        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 3px 12px rgba(11,158,135,0.3)'; e.currentTarget.style.transform = ''; const s = e.currentTarget.querySelector('.shimmer'); if (s) { s.style.left = '-100%'; s.style.transition = 'none'; } }}
+
+            {/* CTA area */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                {/* Sign in — ghost button with hover border reveal */}
+                <Link to="/login" style={{ textDecoration: 'none' }}>
+                    <button
+                        className="navbar-ghost-btn"
+                        style={{
+                            padding: '7px 18px',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            background: 'transparent',
+                            border: '1.5px solid transparent',
+                            borderRadius: '10px',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontFamily: 'Inter,sans-serif',
+                            transition: 'border-color 0.2s ease, color 0.2s ease, background 0.2s ease',
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'rgba(11,158,135,0.4)';
+                            e.currentTarget.style.color = 'var(--accent)';
+                            e.currentTarget.style.background = 'rgba(11,158,135,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >Sign in</button>
+                </Link>
+
+                {/* Get started — shimmer sweep + scale + teal glow */}
+                <Link to="/register" style={{ textDecoration: 'none' }}>
+                    <button
+                        style={{
+                            padding: '8px 20px',
+                            background: 'linear-gradient(135deg,#0b9e87,#0ab29a)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            cursor: 'pointer',
+                            fontFamily: 'Inter,sans-serif',
+                            boxShadow: '0 3px 14px rgba(11,158,135,0.32)',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'box-shadow 0.25s ease, transform 0.2s ease',
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.boxShadow = '0 6px 24px rgba(11,158,135,0.5), 0 0 0 3px rgba(11,158,135,0.15)';
+                            e.currentTarget.style.transform = 'scale(1.045) translateY(-1px)';
+                            const s = e.currentTarget.querySelector('.nav-shimmer');
+                            if (s) { s.style.left = '160%'; s.style.transition = 'left 0.5s ease'; }
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.boxShadow = '0 3px 14px rgba(11,158,135,0.32)';
+                            e.currentTarget.style.transform = '';
+                            const s = e.currentTarget.querySelector('.nav-shimmer');
+                            if (s) { s.style.transition = 'none'; s.style.left = '-100%'; }
+                        }}
                     >
-                        <span className="shimmer" style={{ position: 'absolute', top: 0, left: '-100%', width: '60%', height: '100%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)', transform: 'skewX(-20deg)', pointerEvents: 'none' }} />
+                        <span className="nav-shimmer" style={{
+                            position: 'absolute', top: 0, left: '-100%',
+                            width: '60%', height: '100%',
+                            background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)',
+                            transform: 'skewX(-20deg)',
+                            pointerEvents: 'none',
+                        }} />
                         Get started →
                     </button>
                 </Link>
