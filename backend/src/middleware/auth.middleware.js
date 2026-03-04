@@ -47,6 +47,44 @@ const verifyAdmin = catchAsync(async (req, res, next) => {
     );
 });
 
+// Verify Hospital JWT Token
+const verifyHospital = catchAsync(async (req, res, next) => {
+    let token;
+
+    if (
+        req.headers.authorization &&
+        req.headers.authorization.startsWith("Bearer")
+    ) {
+        token = req.headers.authorization.split(" ")[1];
+    }
+
+    if (!token) {
+        return next(
+            new AppError("You are not logged in! Please log in to get access.", 401)
+        );
+    }
+
+    jwt.verify(
+        token,
+        process.env.JWT_SECRET || "fallback_secret_for_dev_only",
+        (err, decoded) => {
+            if (err) {
+                return next(new AppError("Invalid or expired token. Please log in again.", 401));
+            }
+
+            if (decoded.role !== "HOSPITAL") {
+                return next(
+                    new AppError("You do not have permission to perform this action", 403)
+                );
+            }
+
+            req.hospital = decoded;
+            next();
+        }
+    );
+});
+
 module.exports = {
     verifyAdmin,
+    verifyHospital,
 };

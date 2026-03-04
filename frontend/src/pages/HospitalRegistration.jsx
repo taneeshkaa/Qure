@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 import { hospitalSchema, doctorSchema } from '../schemas/schemas';
 import useFormStore from '../store/formStore';
@@ -64,6 +65,7 @@ export default function HospitalRegistration() {
     const [serverError, setServerError] = useState('');
     const [doctors, setDoctors] = useState([{ id: 1, name: '', specialty: '' }]);
     const [doctorErrors, setDoctorErrors] = useState({});
+    const navigate = useNavigate();
 
     const { hospitalData } = useFormStore();
     const { register, handleSubmit, formState: { errors }, setValue, watch, trigger } = useForm({
@@ -113,6 +115,7 @@ export default function HospitalRegistration() {
                 phone_1: data.primaryPhone.replace(/\D/g, ''),
                 phone_2: data.secondaryPhone ? data.secondaryPhone.replace(/\D/g, '') : undefined,
                 email: data.email,
+                password: data.password,
                 chemist_staff_password: data.password,
                 license_number: data.licenseNumber,
                 chemist_shop_name: data.chemistShopName,
@@ -123,8 +126,19 @@ export default function HospitalRegistration() {
                 }))
             };
 
-            await registerHospital(payload);
+            const res = await registerHospital(payload);
+            // Store session
+            if (res.token) {
+                localStorage.setItem('token', res.token);
+                localStorage.setItem('user', JSON.stringify({
+                    role: 'hospital',
+                    hospital_id: res.data?.hospital_id,
+                    hospital_name: res.data?.hospital_name,
+                    email: res.data?.email,
+                }));
+            }
             setSuccess(true);
+            setTimeout(() => navigate('/hospital/dashboard'), 1200);
         } catch (err) {
             setServerError(err.response?.data?.message || err.message);
         } finally {

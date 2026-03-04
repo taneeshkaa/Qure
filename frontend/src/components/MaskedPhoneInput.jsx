@@ -23,7 +23,7 @@ const MaskedPhoneInput = forwardRef(function MaskedPhoneInput(
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', opacity: dim ? 0.45 : 1, transition: 'opacity 0.2s' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', opacity: dim ? 0.45 : 1, transition: 'opacity 0.2s', minWidth: 0 }}>
             {label && (
                 <label style={{
                     fontSize: '0.75rem', fontWeight: 600,

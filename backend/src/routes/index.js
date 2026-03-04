@@ -7,6 +7,7 @@ const router = express.Router();
 // Phase 1 routes
 const locationRoutes = require("./location.routes");
 const hospitalRoutes = require("./hospital.routes");
+const hospitalDashboardRoutes = require("./hospital.dashboard.routes");
 const patientRoutes = require("./patient.routes");
 
 // Phase 2 routes
@@ -22,7 +23,8 @@ const chemistRoutes = require("./chemist.routes");
 router.use("/locations", locationRoutes);
 
 // ─── Phase 1: Registration & Patient Actions ───────────────────
-router.use("/register/hospital", hospitalRoutes); // Changed specific path handling
+router.use("/register/hospital", hospitalRoutes);
+router.use("/hospital", hospitalDashboardRoutes); // Dashboard + login
 router.use("/patient", patientRoutes);
 
 // ─── Phase 2: Discovery & Appointments ───────────────────────

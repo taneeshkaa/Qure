@@ -23,6 +23,9 @@ import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import ConsultationHub from './pages/doctor/ConsultationHub';
 import ChemistDashboard from './pages/chemist/ChemistDashboard';
 
+// Hospital Dashboard
+import HospitalDashboard from './pages/HospitalDashboard';
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -51,6 +54,9 @@ export default function App() {
 
         {/* ── Phase 3 — Chemist ────────────────────── */}
         <Route path="/chemist/dashboard" element={<ChemistDashboard />} />
+
+        {/* ── Hospital Dashboard ────────────────────── */}
+        <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
       </Routes>
     </BrowserRouter>
   );

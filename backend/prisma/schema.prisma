@@ -38,6 +38,12 @@ model Hospital {
   owner_name        String  @default("") // Who owns/runs the hospital
   license_number    String  @default("") // Medical registration ID
   total_staff_count Int? // Quick-reference employee count
+  about             String? @db.Text // Hospital description/about text
+  address           String? // Full street address for profile
+
+  // Hospital Owner Auth
+  email         String?   @unique
+  password_hash String?
 
   is_approved Boolean   @default(false) // Phase 4 Admin verification
   deletedAt   DateTime? @map("deleted_at") // Phase 4 Soft Delete

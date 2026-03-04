@@ -91,6 +91,15 @@ const hospitalSchema = z.object({
         .string({ required_error: "Chemist staff password is required" })
         .trim()
         .min(6, "Chemist staff password must be at least 6 characters"),
+
+    // ─── Hospital Owner Auth ──────────────────────────────────
+    email: z
+        .string({ required_error: "Email is required" })
+        .email("Enter a valid email address"),
+
+    password: z
+        .string({ required_error: "Password is required" })
+        .min(8, "Password must be at least 8 characters"),
 });
 
 module.exports = hospitalSchema;

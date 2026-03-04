@@ -23,20 +23,30 @@ const OPTIONS = [
 
 export default function IdentityToggle({ value, onChange }) {
     return (
-        <div className="seg-control">
-            {OPTIONS.map((opt) => {
+        <div className="seg-control" role="tablist" aria-label="Account type">
+            {OPTIONS.map((opt, idx) => {
                 const active = value === opt.value;
                 return (
                     <motion.button
                         key={opt.value}
                         type="button"
+                        role="tab"
+                        aria-selected={active}
                         onClick={() => onChange(opt.value)}
-                        whileTap={{ scale: 0.97 }}
+                        whileTap={{ scale: 0.96 }}
                         className={`seg-btn ${active ? 'active' : ''}`}
+                        layout
                     >
-                        <span style={{ color: active ? 'var(--accent)' : 'var(--text-muted)', display: 'flex' }}>
+                        <motion.span
+                            animate={{
+                                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                                scale: active ? 1.1 : 1,
+                            }}
+                            transition={{ duration: 0.2 }}
+                            style={{ display: 'flex' }}
+                        >
                             {opt.icon}
-                        </span>
+                        </motion.span>
                         {opt.label}
                     </motion.button>
                 );
