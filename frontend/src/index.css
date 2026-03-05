@@ -646,6 +646,21 @@ body {
   backdrop-filter: blur(8px);
 }
 
+/* ── Hero image container — concave corner scoop ──────────── */
+.hero-image-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 220px;
+  height: 100px;
+  background: transparent;
+  box-shadow: 30px 30px 0 30px var(--bg);
+  border-radius: 0 0 0 50px;
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* ── Pulse ring (loading state) ───────────────────────────── */
 @keyframes pulse-ring {
   0% {

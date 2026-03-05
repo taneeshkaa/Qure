@@ -155,13 +155,12 @@ function Navbar() {
             }}
             style={{
                 position: 'sticky', top: 0, left: 0, right: 0, zIndex: 50,
-                background: scrolled ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.92)',
-                backdropFilter: 'blur(22px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-                borderBottom: scrolled ? '1px solid rgba(11,158,135,0.13)' : '1px solid rgba(11,158,135,0.08)',
-                boxShadow: scrolled ? '0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 24px rgba(11,120,100,0.08)' : '0 1px 0 rgba(255,255,255,0.5) inset',
+                background: 'transparent',
+                backdropFilter: 'none',
+                WebkitBackdropFilter: 'none',
+                borderBottom: 'none',
+                boxShadow: 'none',
                 padding: '0 32px', height: '62px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                transition: 'background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease',
             }}
         >
             {/* Logo */}
@@ -305,203 +304,243 @@ function HeroStatItem({ value, label, last }) {
 function HeroSection() {
     return (
         <section style={{
-            padding: '30px 30px 30px',   /* 30px gap on all sides */
+            padding: '60px',
             position: 'relative',
             zIndex: 2,
         }}>
-            {/* Outer wrapper — rounded corners + shadow */}
-            <div style={{
-                borderRadius: '20px',
-                overflow: 'hidden',
-                boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
-                position: 'relative',
-                height: 'calc(100vh - 62px - 60px)',   /* viewport minus navbar minus top+bottom margin */
-                minHeight: '560px',
-            }}>
-                {/* Ken Burns image */}
-                <motion.div
-                    initial={reduced ? {} : { scale: 1.08 }}
-                    animate={{ scale: 1.0 }}
-                    transition={{ duration: 16, ease: 'linear' }}
-                    style={{
-                        position: 'absolute', inset: '-4%',
-                        backgroundImage: 'url(https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=1400)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center 30%',
-                        willChange: 'transform',
-                        filter: 'blur(2.5px)',
-                    }}
-                />
-
-                {/* Gradient overlays — left dark band + bottom vignette */}
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(90deg, rgba(5,18,14,0.88) 0%, rgba(5,18,14,0.6) 45%, rgba(5,18,14,0.15) 70%, transparent 100%)',
-                    pointerEvents: 'none',
-                }} />
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(0deg, rgba(5,18,14,0.75) 0%, rgba(5,18,14,0.2) 35%, transparent 60%)',
-                    pointerEvents: 'none',
-                }} />
-
-                {/* ── Content — bottom left ── */}
-                <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    padding: '48px 52px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                    gap: '0',
+            {/* Combined wrapper — image + card sit inside here together */}
+            <div style={{ position: 'relative' }}>
+                {/* Hero image */}
+                <div className="hero-image-container" style={{
+                    borderRadius: '24px',
+                    boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+                    position: 'relative',
+                    height: 'calc(100vh - 62px - 120px)',
+                    minHeight: '520px',
                 }}>
-                    {/* Top badge */}
-                    <motion.div
-                        initial={reduced ? {} : { opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '7px',
-                            padding: '5px 13px',
-                            background: 'rgba(11,158,135,0.25)',
-                            border: '1px solid rgba(11,209,180,0.4)',
-                            borderRadius: '20px',
-                            marginBottom: '18px',
-                        }}
-                    >
-                        <motion.span
-                            animate={{ opacity: [1, 0.3, 1] }}
-                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                            style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d9be', flexShrink: 0, display: 'inline-block' }}
+                    {/* Inner div — overflow:hidden here contains the Ken Burns bleed; image outer has no overflow so box-shadow bleeds freely */}
+                    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '24px' }}>
+                        {/* Hero image — zooms out + brightens on load */}
+                        <motion.div
+                            initial={reduced ? {} : { scale: 1.2, filter: 'blur(2.5px) brightness(0.8)' }}
+                            animate={{ scale: 1.0, filter: 'blur(2.5px) brightness(1)' }}
+                            transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }}
+                            style={{
+                                position: 'absolute', inset: '-4%',
+                                backgroundImage: 'url(https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=1400)',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center 30%',
+                                willChange: 'transform, filter',
+                            }}
                         />
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.01em' }}>Now in Beta · Join 500+ hospitals on Qure</span>
-                    </motion.div>
 
-                    {/* Headline */}
-                    <h1 style={{
-                        fontSize: 'clamp(2.25rem,4.5vw,3.75rem)',
-                        fontWeight: 800,
-                        letterSpacing: '-0.04em',
-                        lineHeight: 1.07,
-                        color: '#ffffff',
-                        marginBottom: '16px',
-                        maxWidth: '680px',
-                    }}>
-                        <motion.span
-                            initial={reduced ? {} : { opacity: 0, y: 24 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                            style={{ display: 'block' }}
-                        >Healthcare management,</motion.span>
-                        <motion.span
-                            initial={reduced ? {} : { opacity: 0, y: 24 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                            style={{ display: 'block', background: 'linear-gradient(90deg,#34d9be,#7ef7e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
-                        >simplified for India.</motion.span>
-                    </h1>
+                        {/* Gradient overlays — fade in together with the image */}
+                        <motion.div
+                            initial={reduced ? {} : { opacity: 0.4 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }}
+                            style={{
+                                position: 'absolute', inset: 0,
+                                background: 'linear-gradient(90deg, rgba(5,18,14,0.88) 0%, rgba(5,18,14,0.6) 45%, rgba(5,18,14,0.15) 70%, transparent 100%)',
+                                pointerEvents: 'none',
+                            }}
+                        />
+                        <motion.div
+                            initial={reduced ? {} : { opacity: 0.4 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }}
+                            style={{
+                                position: 'absolute', inset: 0,
+                                background: 'linear-gradient(0deg, rgba(5,18,14,0.75) 0%, rgba(5,18,14,0.2) 35%, transparent 60%)',
+                                pointerEvents: 'none',
+                            }}
+                        />
 
-                    {/* Subtext */}
-                    <motion.p
-                        initial={reduced ? {} : { opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.55, delay: 0.44, ease: [0.22, 1, 0.36, 1] }}
-                        style={{
-                            fontSize: '1.0625rem', color: 'rgba(255,255,255,0.7)',
-                            lineHeight: 1.72, maxWidth: '500px', marginBottom: '28px',
-                        }}
-                    >
-                        Qure connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
-                    </motion.p>
-
-                    {/* CTA button */}
-                    <motion.div
-                        initial={reduced ? {} : { opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.56, ease: [0.22, 1, 0.36, 1] }}
-                        style={{ marginBottom: '36px' }}
-                    >
-                        <Link to="/register" style={{ textDecoration: 'none' }}>
-                            <motion.button
-                                whileHover={{ scale: 1.04, y: -2, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}
-                                whileTap={{ scale: 0.97 }}
+                        {/* ── Content — bottom left ── */}
+                        <div style={{
+                            position: 'absolute', bottom: 0, left: 0, right: 0,
+                            padding: '48px 52px',
+                            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                            gap: '0',
+                        }}>
+                            {/* Top badge */}
+                            <motion.div
+                                initial={reduced ? {} : { opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                                 style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '9px',
-                                    padding: '14px 28px',
-                                    background: '#ffffff',
-                                    color: '#0b1a17',
-                                    border: 'none',
-                                    borderRadius: '50px',
-                                    fontSize: '1rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    fontFamily: 'Inter,sans-serif',
-                                    boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
-                                    letterSpacing: '-0.01em',
+                                    display: 'inline-flex', alignItems: 'center', gap: '7px',
+                                    padding: '5px 13px',
+                                    background: 'rgba(11,158,135,0.25)',
+                                    border: '1px solid rgba(11,209,180,0.4)',
+                                    borderRadius: '20px',
+                                    marginBottom: '18px',
                                 }}
                             >
-                                Get started free
-                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
-                            </motion.button>
-                        </Link>
-                    </motion.div>
+                                <motion.span
+                                    animate={{ opacity: [1, 0.3, 1] }}
+                                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                                    style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d9be', flexShrink: 0, display: 'inline-block' }}
+                                />
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.01em' }}>Now in Beta · Join 500+ hospitals on Qure</span>
+                            </motion.div>
 
-                    {/* Inline stats */}
-                    <motion.div
-                        initial={reduced ? {} : { opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0' }}
-                    >
-                        {HERO_STATS.map((s, i) => (
-                            <HeroStatItem key={s.label} {...s} last={i === HERO_STATS.length - 1} />
-                        ))}
-                    </motion.div>
-                </div>
+                            {/* Headline */}
+                            <h1 style={{
+                                fontSize: 'clamp(2.25rem,4.5vw,3.75rem)',
+                                fontWeight: 800,
+                                letterSpacing: '-0.04em',
+                                lineHeight: 1.07,
+                                color: '#ffffff',
+                                marginBottom: '16px',
+                                maxWidth: '680px',
+                            }}>
+                                <motion.span
+                                    initial={reduced ? {} : { opacity: 0, y: 24 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                                    style={{ display: 'block' }}
+                                >Healthcare management,</motion.span>
+                                <motion.span
+                                    initial={reduced ? {} : { opacity: 0, y: 24 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.6, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                                    style={{ display: 'block', background: 'linear-gradient(90deg,#34d9be,#7ef7e4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+                                >simplified for India.</motion.span>
+                            </h1>
 
-                {/* ── Glassmorphic pill — bottom right ── */}
+                            {/* Subtext */}
+                            <motion.p
+                                initial={reduced ? {} : { opacity: 0, y: 18 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.55, delay: 0.44, ease: [0.22, 1, 0.36, 1] }}
+                                style={{
+                                    fontSize: '1.0625rem', color: 'rgba(255,255,255,0.7)',
+                                    lineHeight: 1.72, maxWidth: '500px', marginBottom: '28px',
+                                }}
+                            >
+                                Qure connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
+                            </motion.p>
+
+                            {/* CTA button */}
+                            <motion.div
+                                initial={reduced ? {} : { opacity: 0, y: 14 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.56, ease: [0.22, 1, 0.36, 1] }}
+                                style={{ marginBottom: '36px' }}
+                            >
+                                <Link to="/register" style={{ textDecoration: 'none' }}>
+                                    <motion.button
+                                        whileHover={{ scale: 1.04, y: -2, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}
+                                        whileTap={{ scale: 0.97 }}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: '9px',
+                                            padding: '14px 28px',
+                                            background: '#ffffff',
+                                            color: '#0b1a17',
+                                            border: 'none',
+                                            borderRadius: '50px',
+                                            fontSize: '1rem',
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            fontFamily: 'Inter,sans-serif',
+                                            boxShadow: '0 4px 18px rgba(0,0,0,0.18)',
+                                            letterSpacing: '-0.01em',
+                                        }}
+                                    >
+                                        Get started free
+                                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                                    </motion.button>
+                                </Link>
+                            </motion.div>
+
+                            {/* Inline stats */}
+                            <motion.div
+                                initial={reduced ? {} : { opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0' }}
+                            >
+                                {HERO_STATS.map((s, i) => (
+                                    <HeroStatItem key={s.label} {...s} last={i === HERO_STATS.length - 1} />
+                                ))}
+                            </motion.div>
+                        </div>
+
+                    </div>{/* END inner overflow div */}
+
+                    {/* Image corner cut — exact shape of the card using solid bg and box-shadow trick for concave scoop */}
+                    <div style={{
+                        position: 'absolute', bottom: 0, right: 0,
+                        width: 'fit-content', height: '72px',
+                        background: '#ffffff',
+                        borderTopLeftRadius: '36px',
+                        pointerEvents: 'none',
+                        zIndex: 5,
+                    }}>
+                        {/* Box shadow trick simulating concave scoop connecting the cutout to the left image edge */}
+                        <div style={{
+                            position: 'absolute', bottom: 0, left: '-20px',
+                            width: '20px', height: '20px',
+                            background: 'transparent',
+                            boxShadow: '10px 10px 0 10px #ffffff',
+                            borderBottomRightRadius: '20px',
+                        }} />
+                    </div>
+                </div>{/* END hero image outer */}
+
+                {/* Floating card — solid white, fits content, sits at bottom-right */}
                 <motion.div
-                    initial={reduced ? {} : { opacity: 0, y: 20, scale: 0.95 }}
+                    initial={reduced ? {} : { opacity: 0, y: 16, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.55, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     style={{
-                        position: 'absolute', bottom: '44px', right: '44px',
-                        background: 'rgba(255,255,255,0.14)',
-                        backdropFilter: 'blur(20px)',
-                        WebkitBackdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(255,255,255,0.28)',
-                        borderRadius: '18px',
-                        padding: '16px 20px',
-                        display: 'flex', flexDirection: 'column', gap: '8px',
-                        minWidth: '210px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.2)',
+                        position: 'absolute', bottom: '0', right: '0',
+                        width: 'fit-content',
+                        background: '#ffffff',
+                        borderRadius: '16px 0 0 0',
+                        padding: '10px 16px',
+                        display: 'inline-flex', alignItems: 'center', gap: '12px',
+                        boxShadow: '0 8px 28px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+                        zIndex: 10,
                     }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Mini hospital icon avatars */}
-                        {['A', 'F', 'M'].map((initial, idx) => (
-                            <div key={idx} style={{
-                                width: '28px', height: '28px', borderRadius: '50%',
-                                background: `linear-gradient(135deg, ${['#0b9e87', '#12b89e', '#34d9be'][idx]}, ${['#34d9be', '#0b9e87', '#12b89e'][idx]})`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.6875rem', fontWeight: 800, color: 'white',
-                                border: '2px solid rgba(255,255,255,0.3)',
-                                marginLeft: idx > 0 ? '-8px' : 0,
-                                flexShrink: 0,
-                                position: 'relative', zIndex: 3 - idx,
-                            }}>{initial}</div>
+                    {/* 4 overlapping circular avatars, 36px each */}
+                    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        {[1, 2, 3, 4].map((imgNum, idx) => (
+                            <img
+                                key={idx}
+                                src={`https://i.pravatar.cc/36?img=${imgNum}`}
+                                alt={`avatar ${imgNum}`}
+                                style={{
+                                    width: '36px', height: '36px', borderRadius: '50%',
+                                    border: '2px solid #ffffff',
+                                    marginLeft: idx > 0 ? '-8px' : 0,
+                                    flexShrink: 0,
+                                    position: 'relative', zIndex: 4 - idx,
+                                    objectFit: 'cover',
+                                    display: 'block',
+                                }}
+                            />
                         ))}
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#fff', marginLeft: '4px' }}>500+ Verified</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>Hospitals on Qure</span>
-                        <div style={{ display: 'flex', gap: '2px' }}>
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b">
-                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                                </svg>
-                            ))}
+                    {/* Stacked text: bold title + gold stars */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 800, color: '#0b1a17', lineHeight: 1.2, whiteSpace: 'nowrap' }}>500+ Verified Hospitals</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <div style={{ display: 'flex', gap: '2px' }}>
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                ))}
+                            </div>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#f59e0b' }}>5 / 5</span>
                         </div>
                     </div>
                 </motion.div>
-            </div>
+
+            </div>{/* END combined wrapper */}
         </section>
     );
 }
