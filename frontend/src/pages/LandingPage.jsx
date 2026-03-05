@@ -6,7 +6,7 @@ import SparkleCanvas from '../components/SparkleCanvas';
 
 /* ── prefers-reduced-motion ──────────────────────────────── */
 const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const fade = (delay = 0) => reduced ? {} : { initial: { opacity: 0, y: 22 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] } };
+const fade = (delay = 0) => reduced ? {} : { initial: { opacity: 0, y: 22 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, amount: 0.1 }, transition: { duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] } };
 
 /* ── Count-up hook ───────────────────────────────────────── */
 function useCountUp(target, inView) {
@@ -30,18 +30,20 @@ function useCountUp(target, inView) {
 /* ── Data ─────────────────────────────────────────────────── */
 const hospitals = ['Apollo Hospitals', 'Fortis Healthcare', 'AIIMS Delhi', 'Max Hospital', 'Manipal Hospitals', 'Kokilaben Hospital', 'Medanta', 'Narayana Health', 'KIMS Hospital', 'Lilavati Hospital', 'Breach Candy Hospital', 'Wockhardt'];
 const doctors = [
-    { name: 'Dr. Priya Mehta', specialty: 'Cardiologist', hospital: 'Apollo Mumbai', exp: '14 yrs', patients: '4,200+', rating: 4.9, avatar: 'PM' },
-    { name: 'Dr. Rahul Sharma', specialty: 'Neurologist', hospital: 'AIIMS Delhi', exp: '19 yrs', patients: '6,100+', rating: 4.8, avatar: 'RS' },
-    { name: 'Dr. Sneha Iyer', specialty: 'Pediatrician', hospital: 'Fortis Bangalore', exp: '11 yrs', patients: '3,500+', rating: 5.0, avatar: 'SI' },
-    { name: 'Dr. Arjun Pillai', specialty: 'Orthopedist', hospital: 'Medanta Gurugram', exp: '16 yrs', patients: '5,800+', rating: 4.9, avatar: 'AP' },
+    { name: 'Dr. Priya Mehta', specialty: 'Cardiologist', hospital: 'Apollo Mumbai', exp: '14 yrs', patients: '4,200+', rating: 4.9, photo: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400' },
+    { name: 'Dr. Rahul Sharma', specialty: 'Neurologist', hospital: 'AIIMS Delhi', exp: '19 yrs', patients: '6,100+', rating: 4.8, photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400' },
+    { name: 'Dr. Sneha Iyer', specialty: 'Pediatrician', hospital: 'Fortis Bangalore', exp: '11 yrs', patients: '3,500+', rating: 5.0, photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400' },
+    { name: 'Dr. Arjun Pillai', specialty: 'Orthopedist', hospital: 'Medanta Gurugram', exp: '16 yrs', patients: '5,800+', rating: 4.9, photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400' },
+    { name: 'Dr. Kavya Nair', specialty: 'Dermatologist', hospital: 'Kokilaben Mumbai', exp: '9 yrs', patients: '2,900+', rating: 4.8, photo: 'https://images.unsplash.com/photo-1638202993928-7267aad84c31?w=400' },
+    { name: 'Dr. Vikram Singh', specialty: 'Oncologist', hospital: 'Narayana Health', exp: '22 yrs', patients: '8,400+', rating: 5.0, photo: 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400' },
 ];
 const testimonials = [
-    { name: 'Anjali Verma', role: 'Patient, Mumbai', quote: 'I used to spend 3 hours just waiting at the hospital. With Qure, I book a token from home, arrive just-in-time, and I\'m done in 40 minutes.', rating: 5, avatar: 'AV', tag: 'Patient' },
-    { name: 'Dr. Ramesh Gupta', role: 'HOD, Apollo Delhi', quote: 'Our OPD chaos has reduced dramatically. The digital prescription flow saves our doctors 20 minutes per patient. Qure is a game changer.', rating: 5, avatar: 'RG', tag: 'Hospital' },
-    { name: 'Preethi Nair', role: 'Patient, Bangalore', quote: 'The emergency contact feature and my medical card on the app saved my life when I had an allergic reaction. The doctor already knew my history.', rating: 5, avatar: 'PN', tag: 'Patient' },
-    { name: 'Mr. Sanjay Khanna', role: 'Admin, Fortis Noida', quote: 'Registration took under 5 minutes. Our entire hospital was live on Qure in a day. The analytics dashboard is surprisingly powerful.', rating: 5, avatar: 'SK', tag: 'Hospital' },
-    { name: 'Meera Pillai', role: 'Patient, Chennai', quote: 'My daughter\'s prescription was ready at the chemist before we even reached! The pharmacist scanned the QR code and everything was sorted.', rating: 5, avatar: 'MP', tag: 'Patient' },
-    { name: 'Dr. Kavitha Rao', role: 'Dermatologist, Hyderabad', quote: 'My patients love getting SMS updates when they\'re next in queue. I love that I can see their full history before they even walk in.', rating: 5, avatar: 'KR', tag: 'Doctor' },
+    { name: 'Anjali Verma', role: 'Patient, Mumbai', quote: 'I used to spend 3 hours just waiting at the hospital. With Qure, I book a token from home, arrive just-in-time, and I\'m done in 40 minutes.', rating: 5, avatar: 'AV', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=1' },
+    { name: 'Dr. Ramesh Gupta', role: 'HOD, Apollo Delhi', quote: 'Our OPD chaos has reduced dramatically. The digital prescription flow saves our doctors 20 minutes per patient. Qure is a game changer.', rating: 5, avatar: 'RG', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=2' },
+    { name: 'Preethi Nair', role: 'Patient, Bangalore', quote: 'The emergency contact feature and my medical card on the app saved my life when I had an allergic reaction. The doctor already knew my history.', rating: 5, avatar: 'PN', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=3' },
+    { name: 'Mr. Sanjay Khanna', role: 'Admin, Fortis Noida', quote: 'Registration took under 5 minutes. Our entire hospital was live on Qure in a day. The analytics dashboard is surprisingly powerful.', rating: 5, avatar: 'SK', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=4' },
+    { name: 'Meera Pillai', role: 'Patient, Chennai', quote: 'My daughter\'s prescription was ready at the chemist before we even reached! The pharmacist scanned the QR code and everything was sorted.', rating: 5, avatar: 'MP', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=5' },
+    { name: 'Dr. Kavitha Rao', role: 'Dermatologist, Hyderabad', quote: 'My patients love getting SMS updates when they\'re next in queue. I love that I can see their full history before they even walk in.', rating: 5, avatar: 'KR', tag: 'Doctor', photo: 'https://i.pravatar.cc/40?img=6' },
 ];
 const howItWorks = [
     { num: '01', title: 'Hospital registers on Qure', desc: 'Takes under 5 minutes. Add your doctors, departments, and working hours. You\'re live immediately.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m7-11v6m-3-3h6" /></svg> },
@@ -614,7 +616,7 @@ function SectionHeader({ badge, title, subtitle }) {
 /* ── Feature card — glassmorphic bento ───────────────────── */
 function FeatureCard({ f, i, featured = false }) {
     const ref = useRef(null);
-    const inView = useInView(ref, { once: true, margin: '-50px' });
+    const inView = useInView(ref, { once: true, amount: 0.1 });
     const [hovered, setHovered] = useState(false);
 
     return (
@@ -684,45 +686,93 @@ function FeatureCard({ f, i, featured = false }) {
     );
 }
 
-/* ── Doctor card ─────────────────────────────────────────── */
+/* ── Doctor card — open layout (image card + details below) ── */
 function DoctorCard({ doc, i }) {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true, amount: 0.1 });
     const [hovered, setHovered] = useState(false);
+
     return (
-        <motion.div {...fade(i * 0.1)} onHoverStart={() => setHovered(true)} onHoverEnd={() => setHovered(false)}
-            whileHover={{ y: -6 }}
-            style={{ background: 'rgba(255,255,255,0.88)', border: `1.5px solid ${hovered ? 'rgba(11,158,135,0.32)' : 'rgba(11,158,135,0.14)'}`, borderRadius: '18px', padding: '22px', backdropFilter: 'blur(14px)', boxShadow: hovered ? '0 16px 48px rgba(11,158,135,0.15)' : '0 2px 12px rgba(11,120,100,0.06)', transition: 'border-color 0.2s, box-shadow 0.2s', cursor: 'default' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
-                <div style={{ position: 'relative' }}>
-                    <motion.div animate={hovered ? { boxShadow: '0 0 0 3px rgba(11,158,135,0.3)' } : { boxShadow: '0 0 0 0px rgba(11,158,135,0)' }} transition={{ duration: 0.25 }} style={{ borderRadius: '50%' }}>
-                        <Avatar initials={doc.avatar} size={48} />
-                    </motion.div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(11,158,135,0.08)', border: '1px solid rgba(11,158,135,0.2)', borderRadius: '20px', padding: '3px 8px' }}>
-                    <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--accent-dark)' }}>Verified</span>
+        <motion.div
+            ref={ref}
+            onHoverStart={() => setHovered(true)}
+            onHoverEnd={() => setHovered(false)}
+            initial={reduced ? {} : { opacity: 0, y: 36 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+            style={{ cursor: 'default' }}
+        >
+            {/* Image card */}
+            <div style={{
+                position: 'relative',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                height: '240px',
+                boxShadow: hovered
+                    ? '0 20px 48px rgba(0,0,0,0.22), 0 4px 12px rgba(0,0,0,0.12)'
+                    : '0 6px 24px rgba(0,0,0,0.1)',
+                transition: 'box-shadow 0.3s ease',
+            }}>
+                <motion.img
+                    src={doc.photo}
+                    alt={doc.name}
+                    animate={hovered ? { scale: 1.05 } : { scale: 1 }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover', objectPosition: 'center top',
+                        display: 'block',
+                    }}
+                />
+                {/* Verified badge overlay */}
+                <div style={{
+                    position: 'absolute', top: '10px', right: '10px',
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    background: '#ffffff',
+                    border: '1px solid rgba(11,158,135,0.2)',
+                    borderRadius: '20px',
+                    padding: '3px 9px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                }}>
+                    <motion.div
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                        style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--accent-dark)' }}>Verified</span>
                 </div>
             </div>
-            <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>{doc.name}</h3>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent)', fontWeight: 500, marginBottom: '4px' }}>{doc.specialty}</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '14px' }}>{doc.hospital}</p>
-            <div style={{ height: '1px', background: 'rgba(11,158,135,0.1)', marginBottom: '14px' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <div style={{ textAlign: 'center' }}><p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{doc.exp}</p><p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Experience</p></div>
-                <div style={{ textAlign: 'center' }}><p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{doc.patients}</p><p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Patients</p></div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <StarRating rating={doc.rating} />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>{doc.rating}</span>
+
+            {/* Details — sit below image on page background, no white box */}
+            <div style={{ padding: '14px 4px 0' }}>
+                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#ffffff', marginBottom: '2px', lineHeight: 1.3 }}>{doc.name}</h3>
+                <p style={{ fontSize: '0.8125rem', color: '#34d9be', fontWeight: 600, marginBottom: '2px' }}>{doc.specialty}</p>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', marginBottom: '10px' }}>{doc.hospital}</p>
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '8px' }}>
+                    <div>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff' }}>{doc.exp}</p>
+                        <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)' }}>Experience</p>
+                    </div>
+                    <div>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff' }}>{doc.patients}</p>
+                        <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)' }}>Patients</p>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <StarRating rating={doc.rating} />
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#ffffff' }}>{doc.rating}</span>
+                </div>
             </div>
         </motion.div>
     );
 }
 
 /* ── Testimonial carousel ────────────────────────────────── */
+/* Distinct, consistent role badge colors */
 const tagColors = {
-    Patient: { bg: 'rgba(11,158,135,0.09)', color: 'var(--accent-dark)', border: 'rgba(11,158,135,0.22)' },
-    Hospital: { bg: 'rgba(245,158,11,0.09)', color: '#b45309', border: 'rgba(245,158,11,0.22)' },
-    Doctor: { bg: 'rgba(99,102,241,0.09)', color: '#4338ca', border: 'rgba(99,102,241,0.22)' },
+    Patient: { bg: 'rgba(59,130,246,0.1)', color: '#1d4ed8', border: 'rgba(59,130,246,0.25)' },
+    Hospital: { bg: 'rgba(249,115,22,0.1)', color: '#c2410c', border: 'rgba(249,115,22,0.25)' },
+    Doctor: { bg: 'rgba(139,92,246,0.1)', color: '#6d28d9', border: 'rgba(139,92,246,0.25)' },
 };
 function TestimonialCarousel() {
     const [paused, setPaused] = useState(false);
@@ -740,14 +790,14 @@ function TestimonialCarousel() {
                 {doubled.map((t, i) => {
                     const tc = tagColors[t.tag] || tagColors.Patient;
                     return (
-                        <div key={i} style={{ width: '320px', flexShrink: 0, background: 'rgba(255,255,255,0.82)', border: '1.5px solid rgba(11,158,135,0.12)', borderRadius: '18px', padding: '22px', backdropFilter: 'blur(16px)', boxShadow: '0 4px 20px rgba(11,120,100,0.07)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div key={i} style={{ width: '320px', flexShrink: 0, background: 'rgba(255,255,255,0.72)', border: '1.5px solid rgba(255,255,255,0.85)', borderRadius: '18px', padding: '22px', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 4px 24px rgba(11,120,100,0.08), 0 1px 4px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <StarRating rating={t.rating} />
                                 <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: tc.bg, color: tc.color, border: `1px solid ${tc.border}` }}>{t.tag}</span>
                             </div>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7, flex: 1, fontStyle: 'italic' }}>"{t.quote}"</p>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Avatar initials={t.avatar} size={36} />
+                                <img src={t.photo} alt={t.name} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid rgba(255,255,255,0.9)', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }} />
                                 <div><p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{t.name}</p><p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.role}</p></div>
                             </div>
                         </div>
@@ -761,7 +811,7 @@ function TestimonialCarousel() {
 /* ── How it works — full rewrite ────────────────────────── */
 function HowStep({ step, i }) {
     const ref = useRef(null);
-    const inView = useInView(ref, { once: true, margin: '-60px' });
+    const inView = useInView(ref, { once: true, amount: 0.1 });
     const [hovered, setHovered] = useState(false);
     return (
         <motion.div
@@ -882,6 +932,129 @@ function HowItWorksSection() {
     );
 }
 
+
+/* ── FAQ Section ────────────────────────────────────── */
+const faqs = [
+    { q: 'How long does it take to set up Qure for my hospital?', a: 'Most hospitals are fully live in under 5 minutes. You add your departments, doctors, and working hours, and Qure handles everything else automatically. No IT team or technical expertise required.' },
+    { q: 'Is Qure suitable for small clinics or only large hospitals?', a: 'Qure is designed for every scale — from a single-doctor clinic to a 500-bed multi-speciality hospital. The platform adjusts to your size, and you only use the features you need.' },
+    { q: 'How does the digital prescription system work?', a: 'After a consultation, the doctor issues a digital prescription through Qure. The patient receives it instantly via SMS and in the app. Pharmacists can verify and dispense by scanning the QR code — no paper required.' },
+    { q: 'Is patient data secure on Qure?', a: 'Yes. All patient data is encrypted in transit and at rest using AES-256. Qure is fully compliant with Indian healthcare data privacy standards. Only authorised providers can access patient records.' },
+    { q: 'Can patients book appointments without downloading an app?', a: 'Absolutely. Patients can use Qure\'s mobile-friendly web portal from any browser — no app download needed. The native app is available for an enhanced experience but is entirely optional.' },
+    { q: 'What happens if a doctor is unavailable?', a: 'If a doctor marks themselves unavailable, their slots are instantly hidden and patients are notified. You can configure automatic rescheduling suggestions or direct them to the next available doctor in the same department.' },
+    { q: 'Is there a free trial available?', a: 'Yes — every new hospital gets a 30-day free trial with full access to all features. No credit card required. After the trial, you can choose a plan that fits your hospital\'s size and needs.' },
+];
+
+function FAQItem({ faq, i, isOpen, onToggle }) {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true, amount: 0.1 });
+    const [hovered, setHovered] = useState(false);
+    const contentRef = useRef(null);
+    const [height, setHeight] = useState(0);
+
+    useEffect(() => {
+        if (contentRef.current) {
+            setHeight(isOpen ? contentRef.current.scrollHeight : 0);
+        }
+    }, [isOpen]);
+
+    return (
+        <motion.div
+            ref={ref}
+            initial={reduced ? {} : { opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.45, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            onHoverStart={() => setHovered(true)}
+            onHoverEnd={() => setHovered(false)}
+            onClick={onToggle}
+            style={{
+                background: isOpen ? 'rgba(11,158,135,0.04)' : hovered ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.72)',
+                border: `1.5px solid ${isOpen ? 'rgba(11,158,135,0.3)' : hovered ? 'rgba(11,158,135,0.2)' : 'rgba(255,255,255,0.8)'}`,
+                borderLeft: isOpen ? '3px solid #0b9e87' : `1.5px solid ${hovered ? 'rgba(11,158,135,0.2)' : 'rgba(255,255,255,0.8)'}`,
+                borderRadius: '14px',
+                backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                boxShadow: isOpen ? '0 4px 20px rgba(11,158,135,0.1)' : hovered ? '0 4px 16px rgba(11,120,100,0.07)' : '0 2px 8px rgba(11,120,100,0.04)',
+                transition: 'background 0.25s, border-color 0.25s, box-shadow 0.25s',
+                cursor: 'pointer', overflow: 'hidden',
+                marginBottom: '10px',
+            }}
+        >
+            {/* Question row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
+                <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: isOpen ? 'var(--accent)' : 'var(--text-primary)', lineHeight: 1.4, transition: 'color 0.2s', paddingRight: '16px' }}>
+                    {faq.q}
+                </span>
+                <motion.div
+                    animate={{ rotate: isOpen ? 45 : 0 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ flexShrink: 0, width: '22px', height: '22px', borderRadius: '50%', background: isOpen ? 'var(--accent)' : 'rgba(11,158,135,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M6 1v10M1 6h10" stroke={isOpen ? '#fff' : '#0b9e87'} strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                </motion.div>
+            </div>
+            {/* Answer — animated height */}
+            <div style={{ height: `${height}px`, overflow: 'hidden', transition: 'height 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
+                <div ref={contentRef} style={{ padding: '0 20px 18px', background: isOpen ? 'rgba(11,158,135,0.04)' : 'transparent' }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.72, margin: 0 }}>{faq.a}</p>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+function FAQSection() {
+    const [openIdx, setOpenIdx] = useState(null);
+    const toggle = (i) => setOpenIdx(prev => prev === i ? null : i);
+
+    return (
+        <div style={{ background: 'linear-gradient(180deg, white 0%, rgba(240,250,248,0.5) 100%)', borderTop: '1px solid rgba(11,158,135,0.08)', padding: '88px 24px' }}>
+            <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '64px', alignItems: 'start' }}>
+                {/* Left column */}
+                <motion.div {...fade()} style={{ position: 'sticky', top: '120px' }}>
+                    <div className="hero-badge" style={{ display: 'inline-flex', marginBottom: '16px' }}>Got questions?</div>
+                    <h2 style={{ fontSize: 'clamp(1.75rem,3vw,2.25rem)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text-primary)', lineHeight: 1.15, marginBottom: '14px' }}>
+                        Frequently Asked Questions
+                    </h2>
+                    <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '28px', maxWidth: '300px' }}>
+                        Everything you need to know about Qure. Can’t find your answer?
+                    </p>
+                    <motion.a
+                        href="mailto:support@qure.health"
+                        onClick={e => e.preventDefault()}
+                        whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(11,158,135,0.35)' }}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '8px',
+                            background: 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                            color: '#ffffff', fontWeight: 700, fontSize: '0.9rem',
+                            padding: '11px 22px', borderRadius: '10px',
+                            textDecoration: 'none',
+                            boxShadow: '0 4px 16px rgba(11,158,135,0.28)',
+                            transition: 'box-shadow 0.2s',
+                        }}
+                    >
+                        Still have questions? Contact us
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                    </motion.a>
+                </motion.div>
+
+                {/* Right column — accordion */}
+                <div>
+                    {faqs.map((faq, i) => (
+                        <FAQItem
+                            key={i}
+                            faq={faq}
+                            i={i}
+                            isOpen={openIdx === i}
+                            onToggle={() => toggle(i)}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /* ── MAIN ─────────────────────────────────────────────────── */
 export default function LandingPage() {
     return (
@@ -923,16 +1096,51 @@ export default function LandingPage() {
                 </div>
             </div>
 
-            {/* ── DOCTORS ───────────────────────────────────────── */}
-            <Section>
-                <SectionHeader badge="✓ Verified Doctors" title="Top-rated doctors, already on Qure" subtitle="Every doctor on Qure is hospital-verified. Patients see credentials, experience, and live ratings." />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-                    {doctors.map((doc, i) => <DoctorCard key={doc.name} doc={doc} i={i} />)}
+            {/* ── DOCTORS — darker teal section ───────────────── */}
+            <div style={{
+                background: 'linear-gradient(135deg, #07614f 0%, #0a7a65 40%, #0b9e87 100%)',
+                padding: '88px 24px',
+            }}>
+                <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+                    <SectionHeader
+                        badge="✓ Verified Doctors"
+                        title={<span style={{ color: '#ffffff' }}>Top-rated doctors, already on Qure</span>}
+                        subtitle={<span style={{ color: 'rgba(255,255,255,0.7)' }}>Every doctor on Qure is hospital-verified. Patients see credentials, experience, and live ratings.</span>}
+                    />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px' }}>
+                        {doctors.map((doc, i) => (
+                            <DoctorCard key={doc.name} doc={doc} i={i} />
+                        ))}
+                    </div>
+                    <motion.div {...fade(0.2)} style={{ textAlign: 'center', marginTop: '40px' }}>
+                        <motion.a
+                            href="#"
+                            onClick={e => e.preventDefault()}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                fontSize: '0.9rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)',
+                                textDecoration: 'none', position: 'relative',
+                            }}
+                            whileHover={{ gap: '10px' }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <span style={{ position: 'relative' }}>
+                                …and 2,400+ more verified doctors across India
+                                <motion.span
+                                    style={{
+                                        position: 'absolute', bottom: '-2px', left: 0, right: 0,
+                                        height: '1.5px', background: '#34d9be',
+                                        transformOrigin: 'left', borderRadius: '2px', scaleX: 0,
+                                    }}
+                                    whileHover={{ scaleX: 1 }}
+                                    transition={{ duration: 0.3 }}
+                                />
+                            </span>
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                        </motion.a>
+                    </motion.div>
                 </div>
-                <motion.div {...fade(0.2)} style={{ textAlign: 'center', marginTop: '32px' }}>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>…and 2,400+ more verified doctors across India</p>
-                </motion.div>
-            </Section>
+            </div>
 
             {/* ── TESTIMONIALS ──────────────────────────────────── */}
             <div style={{ background: 'white', borderTop: '1px solid rgba(11,158,135,0.1)', padding: '88px 0' }}>
@@ -941,6 +1149,9 @@ export default function LandingPage() {
                 </div>
                 <TestimonialCarousel />
             </div>
+
+            {/* ── FAQ ─────────────────────────────────────── */}
+            <FAQSection />
 
             {/* ── CTA ───────────────────────────────────────────── */}
             <Section style={{ padding: '60px 24px 88px', position: 'relative' }}>
