@@ -1154,47 +1154,56 @@ export default function LandingPage() {
             <FAQSection />
 
             {/* ── CTA ───────────────────────────────────────────── */}
-            <Section style={{ padding: '60px 24px 88px', position: 'relative' }}>
-                {/* Radial teal glow behind */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
-                    <div style={{ width: '600px', height: '400px', background: 'radial-gradient(ellipse,rgba(11,158,135,0.1) 0%,transparent 70%)', borderRadius: '50%' }} />
-                </div>
-                <motion.div {...fade()} style={{ position: 'relative', zIndex: 1, padding: '56px 48px', textAlign: 'center', background: 'rgba(255,255,255,0.82)', border: '1.5px solid rgba(11,158,135,0.22)', borderRadius: '24px', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', boxShadow: '0 8px 48px rgba(11,120,100,0.12), inset 0 1px 0 rgba(255,255,255,0.95)', maxWidth: '680px', margin: '0 auto' }}>
-                    <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: 'linear-gradient(135deg,#0b9e87,#34d9be)', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(11,158,135,0.42)' }}>
-                        <svg width="26" height="26" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
-                    </div>
-                    <h2 style={{ fontSize: '1.875rem', fontWeight: 800, letterSpacing: '-0.035em', marginBottom: '10px', color: 'var(--text-primary)' }}>Ready to modernise your hospital?</h2>
-                    <p className="t-body" style={{ marginBottom: '32px' }}>Join hundreds of healthcare providers already using Qure. Setup takes under 5 minutes.</p>
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                        <Link to="/register" style={{ textDecoration: 'none' }}>
-                            <motion.button whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.975 }}
-                                style={{ padding: '13px 30px', background: 'linear-gradient(135deg,#0b9e87,#0ab29a)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 6px 20px rgba(11,158,135,0.38)', position: 'relative', overflow: 'hidden' }}>
-                                Register now →
-                            </motion.button>
-                        </Link>
-                        <Link to="/login" style={{ textDecoration: 'none' }}>
-                            <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.975 }} className="btn-secondary" style={{ padding: '13px 28px', fontSize: '1rem', width: 'auto' }}>Sign in</motion.button>
-                        </Link>
-                    </div>
-                </motion.div>
-            </Section>
+            {/* Dark block: CTA + footer share seamless #0a0a0a */}
+            <div style={{ background: '#0a0a0a' }}>
 
-            {/* ── FOOTER ────────────────────────────────────────── */}
-            <footer style={{ borderTop: '1px solid rgba(11,158,135,0.1)', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className="logo-mark" style={{ width: '28px', height: '28px', borderRadius: '8px' }}><svg width="15" height="15" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg></div>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>Qure</span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>© 2026 · All rights reserved</span>
+                {/* CTA */}
+                <div style={{ padding: '60px 24px 72px', position: 'relative', maxWidth: '1100px', margin: '0 auto' }}>
+                    {/* Teal radial glow */}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 0 }}>
+                        <div style={{ width: '600px', height: '400px', background: 'radial-gradient(ellipse, rgba(11,158,135,0.18) 0%, transparent 70%)', borderRadius: '50%' }} />
+                    </div>
+                    <motion.div {...fade()} style={{ position: 'relative', zIndex: 1, padding: '56px 48px', textAlign: 'center', background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.1)', borderRadius: '24px', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', boxShadow: '0 8px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)', maxWidth: '680px', margin: '0 auto' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: 'linear-gradient(135deg,#0b9e87,#34d9be)', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(11,158,135,0.42)' }}>
+                            <svg width="26" height="26" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
+                        </div>
+                        <h2 style={{ fontSize: '1.875rem', fontWeight: 800, letterSpacing: '-0.035em', marginBottom: '10px', color: '#ffffff' }}>Ready to modernise your hospital?</h2>
+                        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: '32px' }}>Join hundreds of healthcare providers already using Qure. Setup takes under 5 minutes.</p>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                            <Link to="/register" style={{ textDecoration: 'none' }}>
+                                <motion.button whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.975 }}
+                                    style={{ padding: '13px 30px', background: 'linear-gradient(135deg,#0b9e87,#0ab29a)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif', boxShadow: '0 6px 20px rgba(11,158,135,0.38)' }}>
+                                    Register now →
+                                </motion.button>
+                            </Link>
+                            <Link to="/login" style={{ textDecoration: 'none' }}>
+                                <motion.button whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.975 }}
+                                    style={{ padding: '13px 28px', background: 'transparent', color: '#ffffff', border: '1.5px solid rgba(255,255,255,0.35)', borderRadius: '12px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+                                    Sign in
+                                </motion.button>
+                            </Link>
+                        </div>
+                    </motion.div>
                 </div>
-                <div style={{ display: 'flex', gap: '24px' }}>
-                    {['Privacy', 'Terms', 'Contact'].map(link => (
-                        <a key={link} href="#" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.15s' }}
-                            onMouseEnter={e => e.target.style.color = 'var(--accent)'}
-                            onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}>{link}</a>
-                    ))}
-                </div>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>HIPAA-aligned · Made in India 🇮🇳</p>
-            </footer>
+
+                {/* Footer — no top border, same bg = seamless */}
+                <footer style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="logo-mark" style={{ width: '28px', height: '28px', borderRadius: '8px' }}><svg width="15" height="15" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg></div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff' }}>Qure</span>
+                        <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)' }}>© 2026 · All rights reserved</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '24px' }}>
+                        {['Privacy', 'Terms', 'Contact'].map(link => (
+                            <a key={link} href="#" style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.45)', textDecoration: 'none', transition: 'color 0.15s' }}
+                                onMouseEnter={e => e.target.style.color = '#34d9be'}
+                                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.45)'}>{link}</a>
+                        ))}
+                    </div>
+                    <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.35)' }}>HIPAA-aligned · Made in India 🇮🇳</p>
+                </footer>
+
+            </div>
         </div>
     );
 }
