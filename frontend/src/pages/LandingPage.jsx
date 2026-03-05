@@ -611,17 +611,75 @@ function SectionHeader({ badge, title, subtitle }) {
     );
 }
 
-/* ── Feature card with glass hover ──────────────────────── */
-function FeatureCard({ f, i }) {
+/* ── Feature card — glassmorphic bento ───────────────────── */
+function FeatureCard({ f, i, featured = false }) {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true, margin: '-50px' });
     const [hovered, setHovered] = useState(false);
+
     return (
-        <motion.div {...fade(i * 0.08)}
-            onHoverStart={() => setHovered(true)} onHoverEnd={() => setHovered(false)}
-            whileHover={{ y: -5 }}
-            style={{ background: hovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)', border: `1.5px solid ${hovered ? 'rgba(11,158,135,0.35)' : 'rgba(11,158,135,0.14)'}`, borderRadius: '18px', padding: '26px', backdropFilter: 'blur(16px)', boxShadow: hovered ? '0 12px 40px rgba(11,158,135,0.14), 0 0 0 1px rgba(11,158,135,0.1)' : '0 2px 12px rgba(11,120,100,0.06)', transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s', cursor: 'default' }}>
-            <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: hovered ? 'linear-gradient(135deg,rgba(11,158,135,0.15),rgba(52,217,190,0.12))' : 'rgba(11,158,135,0.08)', border: '1px solid rgba(11,158,135,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', marginBottom: '14px', transition: 'background 0.2s' }}>{f.icon}</div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '7px' }}>{f.title}</h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65 }}>{f.desc}</p>
+        <motion.div
+            ref={ref}
+            onHoverStart={() => setHovered(true)}
+            onHoverEnd={() => setHovered(false)}
+            initial={reduced ? {} : { opacity: 0, y: 32 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={{ y: -6 }}
+            style={{
+                position: 'relative',
+                background: hovered ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.78)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: `1.5px solid ${hovered ? 'rgba(11,158,135,0.38)' : 'rgba(255,255,255,0.72)'}`,
+                borderRadius: '20px',
+                padding: featured ? '32px 36px' : '28px 26px',
+                boxShadow: hovered
+                    ? '0 16px 48px rgba(11,158,135,0.16), 0 4px 16px rgba(11,120,100,0.08)'
+                    : '0 4px 20px rgba(11,120,100,0.07), 0 1px 4px rgba(11,120,100,0.04)',
+                transition: 'background 0.3s, border-color 0.3s, box-shadow 0.3s',
+                cursor: 'default',
+                overflow: 'hidden',
+                display: featured ? 'grid' : 'block',
+                gridTemplateColumns: featured ? '1fr 1fr' : undefined,
+                gap: featured ? '24px' : undefined,
+                alignItems: featured ? 'center' : undefined,
+            }}
+        >
+            {/* Teal top-edge glow line */}
+            <div style={{
+                position: 'absolute', top: 0, left: '20px', right: '20px',
+                height: '1.5px',
+                background: hovered
+                    ? 'linear-gradient(90deg, transparent, #0b9e87, #34d9be, transparent)'
+                    : 'linear-gradient(90deg, transparent, rgba(11,158,135,0.4), transparent)',
+                borderRadius: '2px',
+                transition: 'background 0.3s',
+            }} />
+
+            {/* Icon + title/desc wrapper for featured layout */}
+            <div>
+                {/* Icon container */}
+                <motion.div
+                    animate={hovered ? { rotate: 10, scale: 1.1 } : { rotate: 0, scale: 1 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                        width: featured ? '56px' : '48px',
+                        height: featured ? '56px' : '48px',
+                        borderRadius: '14px',
+                        background: 'linear-gradient(135deg, #0b9e87 0%, #34d9be 100%)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#ffffff',
+                        boxShadow: '0 4px 14px rgba(11,158,135,0.3)',
+                        marginBottom: '16px',
+                    }}
+                >
+                    {f.icon}
+                </motion.div>
+                <h3 style={{ fontSize: featured ? '1.125rem' : '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px', lineHeight: 1.3 }}>{f.title}</h3>
+                {!featured && <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65 }}>{f.desc}</p>}
+            </div>
+            {featured && <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.72 }}>{f.desc}</p>}
         </motion.div>
     );
 }
@@ -700,33 +758,127 @@ function TestimonialCarousel() {
     );
 }
 
-/* ── How it works step ───────────────────────────────────── */
-function HowStep({ step, i, total }) {
+/* ── How it works — full rewrite ────────────────────────── */
+function HowStep({ step, i }) {
     const ref = useRef(null);
     const inView = useInView(ref, { once: true, margin: '-60px' });
+    const [hovered, setHovered] = useState(false);
     return (
-        <div ref={ref} style={{ display: 'flex', alignItems: 'center', flex: i < total - 1 ? 1 : 'none' }}>
-            <motion.div style={{ textAlign: 'center', flex: 1 }} initial={reduced ? {} : { opacity: 0, y: 28 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}>
-                <motion.div
-                    animate={inView ? { boxShadow: ['0 0 0 0 rgba(11,158,135,0.3)', '0 0 0 10px rgba(11,158,135,0)', '0 0 0 0 rgba(11,158,135,0)'] } : {}}
-                    transition={{ delay: i * 0.12 + 0.4, duration: 1.2, ease: 'easeOut' }}
-                    style={{ width: '58px', height: '58px', borderRadius: '50%', background: 'linear-gradient(135deg,rgba(255,255,255,0.95),rgba(240,250,248,0.9))', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--accent)', backdropFilter: 'blur(8px)', boxShadow: '0 0 0 6px rgba(11,158,135,0.08)' }}>
-                    {step.icon}
-                </motion.div>
-                <p style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', marginBottom: '6px' }}>{step.num}</p>
-                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>{step.title}</h3>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{step.desc}</p>
+        <motion.div
+            ref={ref}
+            onHoverStart={() => setHovered(true)}
+            onHoverEnd={() => setHovered(false)}
+            initial={reduced ? {} : { opacity: 0, y: 36 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                textAlign: 'center', padding: '28px 20px 24px',
+                background: hovered ? 'rgba(255,255,255,0.78)' : 'transparent',
+                backdropFilter: hovered ? 'blur(16px)' : 'none',
+                WebkitBackdropFilter: hovered ? 'blur(16px)' : 'none',
+                border: hovered ? '1.5px solid rgba(11,158,135,0.18)' : '1.5px solid transparent',
+                borderRadius: '20px',
+                boxShadow: hovered ? '0 8px 32px rgba(11,158,135,0.1)' : 'none',
+                transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
+                transition: 'background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.25s',
+                position: 'relative',
+                cursor: 'default',
+            }}
+        >
+            {/* Watermark step number */}
+            <span style={{
+                position: 'absolute', top: '14px', left: '50%', transform: 'translateX(-50%)',
+                fontSize: '4rem', fontWeight: 900, letterSpacing: '-0.06em',
+                color: 'rgba(11,158,135,0.10)',
+                lineHeight: 1, pointerEvents: 'none', userSelect: 'none', zIndex: 0,
+            }}>{step.num}</span>
+
+            {/* Icon circle — solid teal gradient with pulse on enter */}
+            <motion.div
+                animate={inView ? {
+                    scale: [1, 1.15, 1],
+                    boxShadow: [
+                        '0 0 0 0 rgba(11,158,135,0.4)',
+                        '0 0 0 12px rgba(11,158,135,0)',
+                        '0 0 0 0 rgba(11,158,135,0)',
+                    ],
+                } : {}}
+                transition={{ delay: i * 0.1 + 0.35, duration: 0.7, ease: 'easeOut' }}
+                style={{
+                    width: '62px', height: '62px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0b9e87 0%, #34d9be 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#ffffff',
+                    boxShadow: '0 6px 20px rgba(11,158,135,0.35)',
+                    marginBottom: '14px', zIndex: 1, flexShrink: 0,
+                }}
+            >
+                {step.icon}
             </motion.div>
-            {i < total - 1 && (
-                <div style={{ flex: 1, height: '2px', background: 'rgba(11,158,135,0.12)', margin: '0 8px', position: 'relative', overflow: 'hidden', marginBottom: '70px', borderRadius: '2px' }}>
-                    <motion.div
-                        initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}}
-                        transition={{ delay: i * 0.12 + 0.3, duration: 0.6, ease: 'easeInOut' }}
-                        style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#0b9e87,#34d9be)', transformOrigin: 'left', borderRadius: '2px' }}
+
+            {/* Title */}
+            <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', lineHeight: 1.3, zIndex: 1 }}>{step.title}</h3>
+            {/* Description */}
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.65, zIndex: 1 }}>{step.desc}</p>
+        </motion.div>
+    );
+}
+
+function HowItWorksSection() {
+    const sectionRef = useRef(null);
+    const lineRef = useRef(null);
+
+    useEffect(() => {
+        const onScroll = () => {
+            if (!sectionRef.current || !lineRef.current) return;
+            const rect = sectionRef.current.getBoundingClientRect();
+            const windowH = window.innerHeight;
+            // progress 0→1 as section scrolls from entering to leaving
+            const progress = Math.min(1, Math.max(0, (windowH - rect.top) / (windowH + rect.height)));
+            lineRef.current.style.width = `${progress * 100}%`;
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
+
+    return (
+        <Section>
+            <SectionHeader badge="Simple to start" title="From sign-up to live in 5 minutes" subtitle="No IT team needed. No long onboarding. Qure is ready when you are." />
+            <div ref={sectionRef} style={{ position: 'relative' }}>
+                {/* Continuous connector line behind icons */}
+                <div style={{
+                    position: 'absolute',
+                    top: '59px',   /* aligns to centre of 62px icon */
+                    left: 'calc(12.5% + 31px)',  /* starts at first icon center */
+                    right: 'calc(12.5% + 31px)', /* ends at last icon center */
+                    height: '2px',
+                    background: 'rgba(11,158,135,0.12)',
+                    borderRadius: '2px',
+                    zIndex: 0,
+                    overflow: 'hidden',
+                }}>
+                    <div
+                        ref={lineRef}
+                        style={{
+                            height: '100%',
+                            width: '0%',
+                            background: 'linear-gradient(90deg, #0b9e87, #34d9be)',
+                            borderRadius: '2px',
+                            transition: 'width 0.15s linear',
+                        }}
                     />
                 </div>
-            )}
-        </div>
+
+                {/* 4-column equal grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0' }}>
+                    {howItWorks.map((step, i) => (
+                        <HowStep key={step.num} step={step} i={i} />
+                    ))}
+                </div>
+            </div>
+        </Section>
     );
 }
 
@@ -748,19 +900,25 @@ export default function LandingPage() {
             </div>
 
             {/* ── HOW IT WORKS ──────────────────────────────────── */}
-            <Section>
-                <SectionHeader badge="Simple to start" title="From sign-up to live in 5 minutes" subtitle="No IT team needed. No long onboarding. Qure is ready when you are." />
-                <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
-                    {howItWorks.map((step, i) => <HowStep key={step.num} step={step} i={i} total={howItWorks.length} />)}
-                </div>
-            </Section>
+            <HowItWorksSection />
 
-            {/* ── FEATURES ──────────────────────────────────────── */}
+            {/* ── FEATURES ──────────────────────────────────── */}
             <div style={{ background: 'linear-gradient(180deg,rgba(240,250,248,0.6),white)', borderTop: '1px solid rgba(11,158,135,0.1)', padding: '88px 24px' }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                     <SectionHeader badge="Everything you need" title="Built for the whole ecosystem" subtitle="From hospital admins to patients, every stakeholder gets exactly what they need." />
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                        {features.map((f, i) => <FeatureCard key={f.title} f={f} i={i} />)}
+                    {/* Bento layout: first card full-width, 2×2 grid, last card full-width */}
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        {/* Row 1 — featured hero card */}
+                        <FeatureCard f={features[0]} i={0} featured />
+                        {/* Row 2 — 2×2 grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                            <FeatureCard f={features[1]} i={1} />
+                            <FeatureCard f={features[2]} i={2} />
+                            <FeatureCard f={features[3]} i={3} />
+                            <FeatureCard f={features[4]} i={4} />
+                        </div>
+                        {/* Row 3 — final full-width */}
+                        <FeatureCard f={features[5]} i={5} featured />
                     </div>
                 </div>
             </div>
