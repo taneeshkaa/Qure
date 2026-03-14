@@ -88,7 +88,7 @@ export default function PatientRegistration() {
                             <>
                                 <div style={{ marginBottom: '4px' }}>
                                     <p className="t-heading" style={{ fontSize: '1rem', marginBottom: '2px' }}>Your account</p>
-                                    <p className="t-muted">Create your patient identity on Qure.</p>
+                                    <p className="t-muted">Create your patient identity on QueueEase.</p>
                                 </div>
                                 <FloatingLabelInput label="Full Name" placeholder="Your full name" error={errors.full_name?.message} value={watch('full_name') || ''} {...register('full_name')} />
                                 <FloatingLabelInput label="Email Address" type="email" placeholder="you@example.com" error={errors.email?.message} value={watch('email') || ''} {...register('email')} />

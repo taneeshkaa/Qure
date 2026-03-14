@@ -75,7 +75,7 @@ export default function HeroPanel() {
                         </svg>
                     </div>
                     <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>
-                        Qure
+                        QueueEase
                     </span>
                     <span style={{
                         marginLeft: '4px',
@@ -105,7 +105,7 @@ export default function HeroPanel() {
                         <span className="gradient-text">Re-engineered.</span>
                     </h1>
                     <p className="t-body" style={{ maxWidth: '310px', lineHeight: 1.75 }}>
-                        Qure is a digital-first platform connecting hospitals,
+                        QueueEase is a digital-first platform connecting hospitals,
                         doctors, and patients — making healthcare smarter for everyone.
                     </p>
                 </motion.div>

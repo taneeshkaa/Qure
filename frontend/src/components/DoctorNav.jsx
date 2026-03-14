@@ -16,7 +16,7 @@ export default function DoctorNav({ active = '' }) {
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" />
                     </svg>
                 </div>
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Qure</span>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>QueueEase</span>
                 <span style={{
                     fontSize: '0.7rem', fontWeight: 700, color: 'white',
                     background: '#5865f2', borderRadius: '6px', padding: '2px 7px', letterSpacing: '0.06em'

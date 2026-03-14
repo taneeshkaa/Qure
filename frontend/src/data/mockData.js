@@ -1,4 +1,4 @@
-/* ── Mock data for Qure — Indian Hospitals & Doctors ─────── */
+/* ── Mock data for QueueEase — Indian Hospitals & Doctors ─────── */
 
 export const STATES = [
     'Delhi', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Gujarat',
@@ -28,9 +28,9 @@ export const hospitals = [
         about: 'The All India Institute of Medical Sciences is a premier public medical university and research hospital synonymous with excellence in healthcare, teaching, and research. It is the largest hospital in Asia.',
         reviewCount: 8240,
         reviews: [
-            { author: 'Ravi Kumar', rating: 5, text: 'World-class treatment. The doctors are extremely knowledgeable. Queue management has improved greatly with Qure.', date: 'Feb 2026' },
-            { author: 'Sunita Sharma', rating: 5, text: 'Emergency care was exceptional. Nurses very attentive. Digital prescriptions via Qure saved us so much time at the pharmacy.', date: 'Jan 2026' },
-            { author: 'Mohan Lal', rating: 4, text: 'Great hospital but long wait times unless you book a Qure token in advance. Highly recommend for serious conditions.', date: 'Dec 2025' },
+            { author: 'Ravi Kumar', rating: 5, text: 'World-class treatment. The doctors are extremely knowledgeable. Queue management has improved greatly with QueueEase.', date: 'Feb 2026' },
+            { author: 'Sunita Sharma', rating: 5, text: 'Emergency care was exceptional. Nurses very attentive. Digital prescriptions via QueueEase saved us so much time at the pharmacy.', date: 'Jan 2026' },
+            { author: 'Mohan Lal', rating: 4, text: 'Great hospital but long wait times unless you book a QueueEase token in advance. Highly recommend for serious conditions.', date: 'Dec 2025' },
         ],
         doctorIds: ['dr-ramesh-gupta', 'dr-priya-mehta', 'dr-anil-bansal'],
     },
@@ -49,7 +49,7 @@ export const hospitals = [
         about: 'Max Super Speciality Hospital Saket is one of India\'s leading multi-speciality hospitals, offering world-class tertiary and quaternary care with cutting-edge technology and compassionate service.',
         reviewCount: 4120,
         reviews: [
-            { author: 'Anita Joshi', rating: 5, text: 'Premium facilities. Dr. Gupta is brilliant. The Qure app kept us updated throughout — no surprises.', date: 'Feb 2026' },
+            { author: 'Anita Joshi', rating: 5, text: 'Premium facilities. Dr. Gupta is brilliant. The QueueEase app kept us updated throughout — no surprises.', date: 'Feb 2026' },
             { author: 'Vijay Singh', rating: 4, text: 'Expensive but worth it for quality of care. Rooms are very comfortable. Staff professional and courteous.', date: 'Jan 2026' },
         ],
         doctorIds: ['dr-kavitha-rao', 'dr-rahul-sharma'],
@@ -69,7 +69,7 @@ export const hospitals = [
         about: 'Fortis Hospital Vasant Kunj is a multi-speciality hospital recognized for its advanced cardiovascular and orthopaedics programmes.',
         reviewCount: 3210,
         reviews: [
-            { author: 'Poonam Arora', rating: 4, text: 'Very clean and well-organised. Cardiology department is excellent. Booking with Qure was seamless.', date: 'Jan 2026' },
+            { author: 'Poonam Arora', rating: 4, text: 'Very clean and well-organised. Cardiology department is excellent. Booking with QueueEase was seamless.', date: 'Jan 2026' },
         ],
         doctorIds: ['dr-sneha-iyer'],
     },
@@ -90,7 +90,7 @@ export const hospitals = [
         about: 'Apollo Hospitals Navi Mumbai is a JCI-accredited multi-speciality hospital offering world-class care with state-of-the-art infrastructure and a team of India\'s finest specialists.',
         reviewCount: 6890,
         reviews: [
-            { author: 'Meera Pillai', rating: 5, text: 'Absolutely top tier. The prescription was at the pharmacy before we left the consultation room — Qure is magic.', date: 'Feb 2026' },
+            { author: 'Meera Pillai', rating: 5, text: 'Absolutely top tier. The prescription was at the pharmacy before we left the consultation room — QueueEase is magic.', date: 'Feb 2026' },
             { author: 'Rohit Desai', rating: 5, text: 'Best cardiac care in Mumbai. Dr. Priya Mehta is exceptional.', date: 'Jan 2026' },
         ],
         doctorIds: ['dr-priya-mehta', 'dr-arjun-pillai'],
@@ -129,7 +129,7 @@ export const hospitals = [
         about: 'Lilavati Hospital is a pioneering private hospital in Mumbai known for its expertise in cardiac care, orthopaedics, and organ transplants.',
         reviewCount: 4100,
         reviews: [
-            { author: 'Abbas Merchant', rating: 5, text: 'Decades of trust built here. The quality hasn\'t dipped at all. Qure token system made our OPD visit quick.', date: 'Jan 2026' },
+            { author: 'Abbas Merchant', rating: 5, text: 'Decades of trust built here. The quality hasn\'t dipped at all. QueueEase token system made our OPD visit quick.', date: 'Jan 2026' },
         ],
         doctorIds: ['dr-arjun-pillai'],
     },
@@ -150,7 +150,7 @@ export const hospitals = [
         about: 'Manipal Hospitals is one of India\'s largest and most respected hospital groups. The Bangalore flagship has established a globally acclaimed multi-organ transplant program.',
         reviewCount: 5760,
         reviews: [
-            { author: 'Kiran Rao', rating: 5, text: 'My father\'s bypass surgery went flawlessly. ICU staff was attentive 24/7. Great use of Qure for post-op follow-ups.', date: 'Feb 2026' },
+            { author: 'Kiran Rao', rating: 5, text: 'My father\'s bypass surgery went flawlessly. ICU staff was attentive 24/7. Great use of QueueEase for post-op follow-ups.', date: 'Feb 2026' },
         ],
         doctorIds: ['dr-sneha-iyer', 'dr-arjun-pillai'],
     },
@@ -258,7 +258,7 @@ export const doctors = [
         reviews: [
             { author: 'Rohit Desai', rating: 5, text: 'Dr. Priya took time to explain every step of my stent procedure. I felt completely at ease. Exceptional doctor.', date: 'Feb 2026' },
             { author: 'Meena Kapoor', rating: 5, text: 'She diagnosed my father\'s condition that 3 other doctors missed. Brilliant and compassionate.', date: 'Jan 2026' },
-            { author: 'Yusuf Khan', rating: 5, text: 'World-class cardiac care. The Qure digital prescription was ready at the pharmacy within minutes!', date: 'Dec 2025' },
+            { author: 'Yusuf Khan', rating: 5, text: 'World-class cardiac care. The QueueEase digital prescription was ready at the pharmacy within minutes!', date: 'Dec 2025' },
         ],
     },
     {
@@ -397,7 +397,7 @@ export const doctors = [
         about: 'Dr. Anil Bansal is a highly experienced gastroenterologist and hepatologist with expertise in therapeutic endoscopy, inflammatory bowel disease, and liver transplant workup. He has performed over 10,000 endoscopic procedures.',
         reviews: [
             { author: 'Balwant Sharma', rating: 5, text: 'Diagnosed my Crohn\'s disease accurately after years of misdiagnosis. A thorough and patient doctor.', date: 'Feb 2026' },
-            { author: 'Neha Gupta', rating: 4, text: 'Knowledgeable and efficient. Wait time is long but appointment via Qure was much better.', date: 'Jan 2026' },
+            { author: 'Neha Gupta', rating: 4, text: 'Knowledgeable and efficient. Wait time is long but appointment via QueueEase was much better.', date: 'Jan 2026' },
         ],
     },
 ];

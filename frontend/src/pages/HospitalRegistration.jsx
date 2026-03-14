@@ -209,7 +209,7 @@ export default function HospitalRegistration() {
                             <>
                                 <div style={{ marginBottom: '4px' }}>
                                     <p className="t-heading" style={{ fontSize: '1rem', marginBottom: '2px' }}>Doctor Roster</p>
-                                    <p className="t-muted">Add all doctors who will use Qure.</p>
+                                    <p className="t-muted">Add all doctors who will use QueueEase.</p>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto', paddingRight: '2px' }}>
                                     <AnimatePresence>

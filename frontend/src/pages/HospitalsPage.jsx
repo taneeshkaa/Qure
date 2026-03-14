@@ -54,7 +54,7 @@ export default function HospitalsPage() {
                     <div className="logo-mark" style={{ width: 32, height: 32, borderRadius: '9px' }}>
                         <svg width="17" height="17" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
                     </div>
-                    <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>Qure</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>QueueEase</span>
                 </Link>
                 <nav style={{ display: 'flex', gap: '12px' }}>
                     <Link to="/hospitals" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', padding: '6px 12px', background: 'var(--accent-bg)', borderRadius: '8px' }}>Hospitals</Link>
@@ -70,7 +70,7 @@ export default function HospitalsPage() {
             <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 24px' }}>
                 {/* ── Page header ──────────────────────────────── */}
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ marginBottom: '32px' }}>
-                    <div className="hero-badge" style={{ display: 'inline-flex', marginBottom: '12px' }}>🏥 {hospitals.length} hospitals on Qure</div>
+                    <div className="hero-badge" style={{ display: 'inline-flex', marginBottom: '12px' }}>🏥 {hospitals.length} hospitals on QueueEase</div>
                     <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '8px' }}>
                         Find a Hospital
                     </h1>

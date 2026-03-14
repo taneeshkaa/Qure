@@ -58,7 +58,7 @@ export default function DoctorDetailPage() {
             <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid var(--border)', padding: '0 32px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
                     <div className="logo-mark" style={{ width: 32, height: 32, borderRadius: '9px' }}><svg width="17" height="17" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg></div>
-                    <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>Qure</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>QueueEase</span>
                 </Link>
                 <nav style={{ display: 'flex', gap: '12px' }}>
                     <Link to="/hospitals" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', textDecoration: 'none', padding: '6px 12px' }}>Hospitals</Link>
@@ -122,7 +122,7 @@ export default function DoctorDetailPage() {
                             <p style={{ fontSize: '1.875rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>₹{doc.fee}</p>
                             <Link to="/register" style={{ textDecoration: 'none' }}>
                                 <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap' }}>
-                                    Book via Qure →
+                                    Book via QueueEase →
                                 </motion.button>
                             </Link>
                         </div>
@@ -235,10 +235,10 @@ export default function DoctorDetailPage() {
                         {/* Book CTA */}
                         <motion.div style={{ padding: '24px', borderRadius: '16px', background: 'linear-gradient(135deg, #f0fdfb 0%, #ffffff 100%)', border: '1.5px solid rgba(11,158,135,0.25)' }} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                             <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Book an appointment</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>Get a Qure token for {doc.name}'s next available slot.</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>Get a QueueEase token for {doc.name}'s next available slot.</p>
                             <Link to="/register" style={{ textDecoration: 'none' }}>
                                 <button style={{ width: '100%', padding: '11px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 3px 10px rgba(11,158,135,0.3)' }}>
-                                    Register on Qure →
+                                    Register on QueueEase →
                                 </button>
                             </Link>
                         </motion.div>

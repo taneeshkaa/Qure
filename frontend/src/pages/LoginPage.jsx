@@ -103,7 +103,7 @@ export default function LoginPage() {
                         </svg>
                     </div>
                     <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.035em', color: 'var(--text-primary)' }}>
-                        Qure
+                        QueueEase
                     </span>
                 </div>
 
@@ -136,7 +136,7 @@ export default function LoginPage() {
                             color: 'var(--text-primary)',
                             marginBottom: '4px',
                         }}>
-                            Sign in to Qure
+                            Sign in to QueueEase
                         </h1>
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                             Let's get you back in.
@@ -255,7 +255,7 @@ export default function LoginPage() {
                     {/* Divider */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0' }}>
                         <div className="divider" />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>New to Qure?</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>New to QueueEase?</span>
                         <div className="divider" />
                     </div>
 
@@ -271,7 +271,7 @@ export default function LoginPage() {
                 </div>
 
                 <p style={{ textAlign: 'center', marginTop: '18px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Protected by Qure · HIPAA-aligned
+                    Protected by QueueEase · HIPAA-aligned
                 </p>
             </motion.div>
         </div>

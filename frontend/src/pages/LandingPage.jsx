@@ -38,15 +38,15 @@ const doctors = [
     { name: 'Dr. Vikram Singh', specialty: 'Oncologist', hospital: 'Narayana Health', exp: '22 yrs', patients: '8,400+', rating: 5.0, photo: 'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400' },
 ];
 const testimonials = [
-    { name: 'Anjali Verma', role: 'Patient, Mumbai', quote: 'I used to spend 3 hours just waiting at the hospital. With Qure, I book a token from home, arrive just-in-time, and I\'m done in 40 minutes.', rating: 5, avatar: 'AV', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=1' },
-    { name: 'Dr. Ramesh Gupta', role: 'HOD, Apollo Delhi', quote: 'Our OPD chaos has reduced dramatically. The digital prescription flow saves our doctors 20 minutes per patient. Qure is a game changer.', rating: 5, avatar: 'RG', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=2' },
+    { name: 'Anjali Verma', role: 'Patient, Mumbai', quote: 'I used to spend 3 hours just waiting at the hospital. With QueueEase, I book a token from home, arrive just-in-time, and I\'m done in 40 minutes.', rating: 5, avatar: 'AV', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=1' },
+    { name: 'Dr. Ramesh Gupta', role: 'HOD, Apollo Delhi', quote: 'Our OPD chaos has reduced dramatically. The digital prescription flow saves our doctors 20 minutes per patient. QueueEase is a game changer.', rating: 5, avatar: 'RG', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=2' },
     { name: 'Preethi Nair', role: 'Patient, Bangalore', quote: 'The emergency contact feature and my medical card on the app saved my life when I had an allergic reaction. The doctor already knew my history.', rating: 5, avatar: 'PN', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=3' },
-    { name: 'Mr. Sanjay Khanna', role: 'Admin, Fortis Noida', quote: 'Registration took under 5 minutes. Our entire hospital was live on Qure in a day. The analytics dashboard is surprisingly powerful.', rating: 5, avatar: 'SK', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=4' },
+    { name: 'Mr. Sanjay Khanna', role: 'Admin, Fortis Noida', quote: 'Registration took under 5 minutes. Our entire hospital was live on QueueEase in a day. The analytics dashboard is surprisingly powerful.', rating: 5, avatar: 'SK', tag: 'Hospital', photo: 'https://i.pravatar.cc/40?img=4' },
     { name: 'Meera Pillai', role: 'Patient, Chennai', quote: 'My daughter\'s prescription was ready at the chemist before we even reached! The pharmacist scanned the QR code and everything was sorted.', rating: 5, avatar: 'MP', tag: 'Patient', photo: 'https://i.pravatar.cc/40?img=5' },
     { name: 'Dr. Kavitha Rao', role: 'Dermatologist, Hyderabad', quote: 'My patients love getting SMS updates when they\'re next in queue. I love that I can see their full history before they even walk in.', rating: 5, avatar: 'KR', tag: 'Doctor', photo: 'https://i.pravatar.cc/40?img=6' },
 ];
 const howItWorks = [
-    { num: '01', title: 'Hospital registers on Qure', desc: 'Takes under 5 minutes. Add your doctors, departments, and working hours. You\'re live immediately.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m7-11v6m-3-3h6" /></svg> },
+    { num: '01', title: 'Hospital registers on QueueEase', desc: 'Takes under 5 minutes. Add your doctors, departments, and working hours. You\'re live immediately.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m7-11v6m-3-3h6" /></svg> },
     { num: '02', title: 'Patient books a slot', desc: 'Patients search for your hospital or doctor, choose a time, and get a digital token instantly.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg> },
     { num: '03', title: 'Doctor sees you on time', desc: 'No more crowded waiting rooms. Patients arrive at their token time. Doctors run no overtime.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
     { num: '04', title: 'Prescription goes digital', desc: 'Doctor taps "Send prescription". Chemist receives it in seconds. Patient picks up with a QR scan.', icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> },
@@ -57,7 +57,7 @@ const features = [
     { icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>, title: 'Live Queue Tracking', desc: 'Real-time patient queue position on any device. Get SMS alerts when you\'re next — no app download needed.' },
     { icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>, title: 'Hospital Analytics', desc: 'See patient flow, peak hours, and doctor performance at a glance. Data-driven decisions for better care.' },
     { icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" /></svg>, title: 'Patient Profiles', desc: 'Medical history, allergies, and emergency contacts — securely stored and accessible to authorized doctors.' },
-    { icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>, title: 'Works on Any Device', desc: 'Desktop, mobile, tablet — Qure is fully responsive. Hospitals manage on desktop; patients use their phone.' },
+    { icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>, title: 'Works on Any Device', desc: 'Desktop, mobile, tablet — QueueEase is fully responsive. Hospitals manage on desktop; patients use their phone.' },
 ];
 const stats = [
     { value: '10k+', label: 'Patient Records' },
@@ -170,7 +170,7 @@ function Navbar() {
                 <div className="logo-mark">
                     <svg width="20" height="20" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
                 </div>
-                <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>Qure</span>
+                <span style={{ fontSize: '1.125rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>QueueEase</span>
                 {/* Teal BETA badge — intentional, not grey */}
                 <motion.span
                     animate={{ boxShadow: ['0 0 0 0 rgba(11,158,135,0)', '0 0 0 5px rgba(11,158,135,0.18)', '0 0 0 0 rgba(11,158,135,0)'] }}
@@ -384,7 +384,7 @@ function HeroSection() {
                                     transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
                                     style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d9be', flexShrink: 0, display: 'inline-block' }}
                                 />
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.01em' }}>Now in Beta · Join 500+ hospitals on Qure</span>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.01em' }}>Now in Beta · Join 500+ hospitals on QueueEase</span>
                             </motion.div>
 
                             {/* Headline */}
@@ -421,7 +421,7 @@ function HeroSection() {
                                     lineHeight: 1.72, maxWidth: '500px', marginBottom: '28px',
                                 }}
                             >
-                                Qure connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
+                                QueueEase connects hospitals, doctors, patients, and pharmacies in one intelligent platform — cutting wait times, digitising prescriptions, and putting healthcare data where it belongs.
                             </motion.p>
 
                             {/* CTA button */}
@@ -895,7 +895,7 @@ function HowItWorksSection() {
 
     return (
         <Section>
-            <SectionHeader badge="Simple to start" title="From sign-up to live in 5 minutes" subtitle="No IT team needed. No long onboarding. Qure is ready when you are." />
+            <SectionHeader badge="Simple to start" title="From sign-up to live in 5 minutes" subtitle="No IT team needed. No long onboarding. QueueEase is ready when you are." />
             <div ref={sectionRef} style={{ position: 'relative' }}>
                 {/* Continuous connector line behind icons */}
                 <div style={{
@@ -935,11 +935,11 @@ function HowItWorksSection() {
 
 /* ── FAQ Section ────────────────────────────────────── */
 const faqs = [
-    { q: 'How long does it take to set up Qure for my hospital?', a: 'Most hospitals are fully live in under 5 minutes. You add your departments, doctors, and working hours, and Qure handles everything else automatically. No IT team or technical expertise required.' },
-    { q: 'Is Qure suitable for small clinics or only large hospitals?', a: 'Qure is designed for every scale — from a single-doctor clinic to a 500-bed multi-speciality hospital. The platform adjusts to your size, and you only use the features you need.' },
-    { q: 'How does the digital prescription system work?', a: 'After a consultation, the doctor issues a digital prescription through Qure. The patient receives it instantly via SMS and in the app. Pharmacists can verify and dispense by scanning the QR code — no paper required.' },
-    { q: 'Is patient data secure on Qure?', a: 'Yes. All patient data is encrypted in transit and at rest using AES-256. Qure is fully compliant with Indian healthcare data privacy standards. Only authorised providers can access patient records.' },
-    { q: 'Can patients book appointments without downloading an app?', a: 'Absolutely. Patients can use Qure\'s mobile-friendly web portal from any browser — no app download needed. The native app is available for an enhanced experience but is entirely optional.' },
+    { q: 'How long does it take to set up QueueEase for my hospital?', a: 'Most hospitals are fully live in under 5 minutes. You add your departments, doctors, and working hours, and QueueEase handles everything else automatically. No IT team or technical expertise required.' },
+    { q: 'Is QueueEase suitable for small clinics or only large hospitals?', a: 'QueueEase is designed for every scale — from a single-doctor clinic to a 500-bed multi-speciality hospital. The platform adjusts to your size, and you only use the features you need.' },
+    { q: 'How does the digital prescription system work?', a: 'After a consultation, the doctor issues a digital prescription through QueueEase. The patient receives it instantly via SMS and in the app. Pharmacists can verify and dispense by scanning the QR code — no paper required.' },
+    { q: 'Is patient data secure on QueueEase?', a: 'Yes. All patient data is encrypted in transit and at rest using AES-256. QueueEase is fully compliant with Indian healthcare data privacy standards. Only authorised providers can access patient records.' },
+    { q: 'Can patients book appointments without downloading an app?', a: 'Absolutely. Patients can use QueueEase\'s mobile-friendly web portal from any browser — no app download needed. The native app is available for an enhanced experience but is entirely optional.' },
     { q: 'What happens if a doctor is unavailable?', a: 'If a doctor marks themselves unavailable, their slots are instantly hidden and patients are notified. You can configure automatic rescheduling suggestions or direct them to the next available doctor in the same department.' },
     { q: 'Is there a free trial available?', a: 'Yes — every new hospital gets a 30-day free trial with full access to all features. No credit card required. After the trial, you can choose a plan that fits your hospital\'s size and needs.' },
 ];
@@ -1017,7 +1017,7 @@ function FAQSection() {
                         Frequently Asked Questions
                     </h2>
                     <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '28px', maxWidth: '300px' }}>
-                        Everything you need to know about Qure. Can’t find your answer?
+                        Everything you need to know about QueueEase. Can’t find your answer?
                     </p>
                     <motion.a
                         href="mailto:support@qure.health"
@@ -1104,8 +1104,8 @@ export default function LandingPage() {
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
                     <SectionHeader
                         badge="✓ Verified Doctors"
-                        title={<span style={{ color: '#ffffff' }}>Top-rated doctors, already on Qure</span>}
-                        subtitle={<span style={{ color: 'rgba(255,255,255,0.7)' }}>Every doctor on Qure is hospital-verified. Patients see credentials, experience, and live ratings.</span>}
+                        title={<span style={{ color: '#ffffff' }}>Top-rated doctors, already on QueueEase</span>}
+                        subtitle={<span style={{ color: 'rgba(255,255,255,0.7)' }}>Every doctor on QueueEase is hospital-verified. Patients see credentials, experience, and live ratings.</span>}
                     />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '28px' }}>
                         {doctors.map((doc, i) => (
@@ -1145,7 +1145,7 @@ export default function LandingPage() {
             {/* ── TESTIMONIALS ──────────────────────────────────── */}
             <div style={{ background: 'white', borderTop: '1px solid rgba(11,158,135,0.1)', padding: '88px 0' }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 24px' }}>
-                    <SectionHeader badge="❤️ Real stories" title="What our users say" subtitle="From patients to hospital admins — hear how Qure changed their healthcare experience." />
+                    <SectionHeader badge="❤️ Real stories" title="What our users say" subtitle="From patients to hospital admins — hear how QueueEase changed their healthcare experience." />
                 </div>
                 <TestimonialCarousel />
             </div>
@@ -1168,7 +1168,7 @@ export default function LandingPage() {
                             <svg width="26" height="26" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
                         </div>
                         <h2 style={{ fontSize: '1.875rem', fontWeight: 800, letterSpacing: '-0.035em', marginBottom: '10px', color: '#ffffff' }}>Ready to modernise your hospital?</h2>
-                        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: '32px' }}>Join hundreds of healthcare providers already using Qure. Setup takes under 5 minutes.</p>
+                        <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: '32px' }}>Join hundreds of healthcare providers already using QueueEase. Setup takes under 5 minutes.</p>
                         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                             <Link to="/register" style={{ textDecoration: 'none' }}>
                                 <motion.button whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.975 }}
@@ -1190,7 +1190,7 @@ export default function LandingPage() {
                 <footer style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1100px', margin: '0 auto', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div className="logo-mark" style={{ width: '28px', height: '28px', borderRadius: '8px' }}><svg width="15" height="15" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg></div>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff' }}>Qure</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff' }}>QueueEase</span>
                         <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.4)' }}>© 2026 · All rights reserved</span>
                     </div>
                     <div style={{ display: 'flex', gap: '24px' }}>

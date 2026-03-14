@@ -63,7 +63,7 @@ export default function TokenCard() {
                         {/* Card header banner */}
                         <div style={{ background: 'linear-gradient(135deg, #0b9e87 0%, #0d7a6a 100%)', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>Qure Digital Token</p>
+                                <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>QueueEase Digital Token</p>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                                     <span style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>Token</span>
                                     <motion.span

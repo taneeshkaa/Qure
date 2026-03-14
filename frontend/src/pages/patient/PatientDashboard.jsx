@@ -107,7 +107,7 @@ function PatientNav({ active = '' }) {
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" />
                     </svg>
                 </div>
-                <span style={{ fontSize: '1.0625rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>Qure</span>
+                <span style={{ fontSize: '1.0625rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>QueueEase</span>
             </Link>
 
             {/* Nav links */}
@@ -695,7 +695,7 @@ export default function PatientDashboard() {
                 <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 80px' }}>
                     <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-                            How Qure Works
+                            How QueueEase Works
                         </h2>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>Your journey to better health, simplified.</p>
                     </div>

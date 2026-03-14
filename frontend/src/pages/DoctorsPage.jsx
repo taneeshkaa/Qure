@@ -48,7 +48,7 @@ export default function DoctorsPage() {
                     <div className="logo-mark" style={{ width: 32, height: 32, borderRadius: '9px' }}>
                         <svg width="17" height="17" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6H9l3-7 3 7h-2v6z" /></svg>
                     </div>
-                    <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>Qure</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>QueueEase</span>
                 </Link>
                 <nav style={{ display: 'flex', gap: '12px' }}>
                     <Link to="/hospitals" style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)', textDecoration: 'none', padding: '6px 12px' }}>Hospitals</Link>
@@ -67,7 +67,7 @@ export default function DoctorsPage() {
                     <h1 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text-primary)', marginBottom: '8px' }}>
                         Find a Doctor
                     </h1>
-                    <p className="t-body">Every doctor on Qure is hospital-verified. Filter by state and specialty to find the right specialist.</p>
+                    <p className="t-body">Every doctor on QueueEase is hospital-verified. Filter by state and specialty to find the right specialist.</p>
                 </motion.div>
 
                 {/* ── Filters ──────────────────────────────────── */}
