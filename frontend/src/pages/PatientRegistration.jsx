@@ -54,11 +54,19 @@ export default function PatientRegistration() {
         setLoading(true); setServerError('');
         try {
             // All fields already snake_case — just convert arrays to comma strings
-            await registerPatient({
+            const res = await registerPatient({
                 ...data,
                 allergies: allergies.join(', '),
                 current_medications: medications.join(', '),
             });
+            
+            // Store patient ID from registration response for future bookings
+            if (res.data?.patient_id) {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                localStorage.setItem('user', JSON.stringify({ ...user, id: res.data.patient_id }));
+                console.log('✅ Patient registered with ID:', res.data.patient_id);
+            }
+            
             setSuccess(true);
             // Check if there's a saved redirect path (from ProtectedRoute when they tried to book)
             const redirectPath = getAndClearRedirectPath();

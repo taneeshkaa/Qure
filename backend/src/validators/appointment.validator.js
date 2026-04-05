@@ -37,6 +37,20 @@ const appointmentSchema = z.object({
         .string({ required_error: "Problem description is required" })
         .trim()
         .min(5, "Problem description must be at least 5 characters"),
+
+    paymentMethod: z
+        .enum(["UPI", "CASH"], {
+            required_error: "Payment method is required",
+            invalid_type_error: "Payment method must be UPI or CASH",
+        })
+        .default("CASH"), // Default to CASH (rural-friendly)
+
+    paymentStatus: z
+        .enum(["PAID", "PENDING"], {
+            required_error: "Payment status is required",
+            invalid_type_error: "Payment status must be PAID or PENDING",
+        })
+        .default("PENDING"), // Default to PENDING
 });
 
 module.exports = appointmentSchema;

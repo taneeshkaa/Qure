@@ -16,7 +16,7 @@ export const getAvailability = (doctorId, date) => {
 
 // ─── Book Appointment ─────────────────────────────────────────
 // Backend: POST /api/v1/appointments/book
-// Body: { doctor_id, patient_id, appointment_date, slot_time, condition_notes }
+// Body: { doctor_id, patient_id, date (YYYY-MM-DD), slot (HH:MM), problem_description }
 // Returns: { status, data: { appointment: { id, token_number, ... } } }
 export const bookAppointment = (data) =>
     api.post('/appointments/book', data);

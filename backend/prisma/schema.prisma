@@ -149,6 +149,8 @@ model MedicalProfile {
 // ─── Appointments ────────────────────────────────────────────
 // Tracks booked appointments with atomic token number generation.
 // The unique constraint on (doctor_id, date, slot) prevents double-booking.
+// Payment fields: paymentMethod (UPI or CASH), paymentStatus (PAID or PENDING).
+// If paymentMethod is CASH, paymentStatus is auto-set to PENDING.
 model Appointment {
   id                  Int      @id @default(autoincrement())
   patient_id          Int
@@ -158,6 +160,8 @@ model Appointment {
   token_number        Int
   problem_description String
   status              String   @default("BOOKED") // BOOKED, COMPLETED, CANCELLED
+  paymentMethod       String   @default("CASH") // UPI, CASH
+  paymentStatus       String   @default("PENDING") // PAID, PENDING
 
   patient      Patient             @relation(fields: [patient_id], references: [id], onDelete: Cascade)
   doctor       Doctor              @relation(fields: [doctor_id], references: [id], onDelete: Cascade)

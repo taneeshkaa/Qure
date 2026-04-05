@@ -24,17 +24,42 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401) {
             // Token expired or invalid — clear local session
+            console.warn('🔐 Auth token invalid or expired. Clearing localStorage.');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
         }
-        const message =
-            error.response?.data?.message ||
-            error.response?.data?.error ||
+
+        // Extract detailed error information
+        const errorData = error.response?.data;
+        let message =
+            errorData?.message ||
+            errorData?.error ||
             error.message ||
             'Something went wrong';
+
+        // For Zod validation errors, provide detailed field-level feedback
+        if (error.response?.status === 400 && errorData?.errors) {
+            console.error('❌ Validation Error Details:', errorData.errors);
+            const fieldErrors = Array.isArray(errorData.errors)
+                ? errorData.errors.map(e => `${e.path}: ${e.message}`).join('; ')
+                : errorData.errors;
+            message = `Validation failed: ${fieldErrors}`;
+        }
+
         const err = new Error(message);
         err.status = error.response?.status;
         err.data = error.response?.data;
+        
+        // Log full error for debugging
+        console.error('🚨 API Error:', {
+            status: err.status,
+            message: err.message,
+            data: err.data,
+            requestURL: error.config?.url,
+            requestMethod: error.config?.method,
+            requestData: error.config?.data,
+        });
+
         return Promise.reject(err);
     }
 );

@@ -239,6 +239,7 @@ export const hospitals = [
 export const doctors = [
     {
         id: 'dr-priya-mehta',
+        numeric_id: 1,
         name: 'Dr. Priya Mehta',
         specialty: 'Cardiology',
         designation: 'Senior Consultant & Head of Cardiology',
@@ -263,6 +264,7 @@ export const doctors = [
     },
     {
         id: 'dr-rahul-sharma',
+        numeric_id: 2,
         name: 'Dr. Rahul Sharma',
         specialty: 'Neurology',
         designation: 'Director – Neurosciences',
@@ -286,6 +288,7 @@ export const doctors = [
     },
     {
         id: 'dr-sneha-iyer',
+        numeric_id: 3,
         name: 'Dr. Sneha Iyer',
         specialty: 'Pediatrics',
         designation: 'Senior Pediatrician & Neonatologist',
@@ -310,6 +313,7 @@ export const doctors = [
     },
     {
         id: 'dr-arjun-pillai',
+        numeric_id: 4,
         name: 'Dr. Arjun Pillai',
         specialty: 'Orthopedics',
         designation: 'Joint Replacement & Spine Surgeon',
@@ -333,6 +337,7 @@ export const doctors = [
     },
     {
         id: 'dr-ramesh-gupta',
+        numeric_id: 5,
         name: 'Dr. Ramesh Gupta',
         specialty: 'Oncology',
         designation: 'HOD – Medical Oncology',
@@ -356,6 +361,7 @@ export const doctors = [
     },
     {
         id: 'dr-kavitha-rao',
+        numeric_id: 6,
         name: 'Dr. Kavitha Rao',
         specialty: 'Dermatology',
         designation: 'Senior Consultant – Dermatology & Cosmetology',
@@ -379,6 +385,7 @@ export const doctors = [
     },
     {
         id: 'dr-anil-bansal',
+        numeric_id: 7,
         name: 'Dr. Anil Bansal',
         specialty: 'Gastroenterology',
         designation: 'Senior Consultant – Gastroenterology & Hepatology',

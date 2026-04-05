@@ -8,7 +8,7 @@ const AppError = require("../utils/AppError");
 
 // ─── Book Appointment ────────────────────────────────────────
 const bookAppointment = catchAsync(async (req, res, next) => {
-    const { doctor_id, patient_id, date, slot, problem_description } = req.body;
+    const { doctor_id, patient_id, date, slot, problem_description, paymentMethod, paymentStatus } = req.body;
 
     // Parse the date (YYYY-MM-DD)
     const appointmentDate = new Date(date + "T00:00:00");
@@ -55,6 +55,8 @@ const bookAppointment = catchAsync(async (req, res, next) => {
                     token_number: newToken,
                     problem_description,
                     status: "BOOKED",
+                    paymentMethod: paymentMethod || "CASH", // Default to CASH if not provided
+                    paymentStatus: paymentMethod === "CASH" ? "PENDING" : (paymentStatus || "PENDING"), // CASH always PENDING
                 },
             });
 
@@ -105,6 +107,8 @@ const bookAppointment = catchAsync(async (req, res, next) => {
                 slot,
                 problem_description,
                 status: "BOOKED",
+                paymentMethod: result.appointment.paymentMethod,
+                paymentStatus: result.appointment.paymentStatus,
                 reminders: {
                     one_day_before: "Scheduled",
                     one_hour_before: "Scheduled",
