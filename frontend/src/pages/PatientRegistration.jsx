@@ -8,6 +8,7 @@ import { patientSchema } from '../schemas/schemas';
 import useFormStore from '../store/formStore';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import TagChipInput from '../components/TagChipInput';
+import { getAndClearRedirectPath } from '../utils/authRedirect';
 
 import StepIndicator from '../components/StepIndicator';
 import PulseButton from '../components/PulseButton';
@@ -59,7 +60,9 @@ export default function PatientRegistration() {
                 current_medications: medications.join(', '),
             });
             setSuccess(true);
-            setTimeout(() => navigate('/patient/dashboard'), 800);
+            // Check if there's a saved redirect path (from ProtectedRoute when they tried to book)
+            const redirectPath = getAndClearRedirectPath();
+            setTimeout(() => navigate(redirectPath || '/patient/dashboard'), 800);
         } catch (err) {
             setServerError(err.message);
         } finally {

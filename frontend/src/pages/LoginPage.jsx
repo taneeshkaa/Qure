@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import PulseButton from '../components/PulseButton';
 import { loginHospital, loginAdmin } from '../api/auth';
+import { getAndClearRedirectPath } from '../utils/authRedirect';
 
 const ROLES = [
     {
@@ -42,7 +43,10 @@ export default function LoginPage() {
         if (role === 'patient') {
             localStorage.setItem('token', 'simulated_patient_token');
             localStorage.setItem('user', JSON.stringify({ email: email.trim(), role: 'patient' }));
-            navigate('/patient/dashboard');
+            
+            // Check if there's a saved redirect path (from ProtectedRoute)
+            const redirectPath = getAndClearRedirectPath();
+            navigate(redirectPath || '/patient/dashboard');
             return;
         }
 
@@ -59,11 +63,16 @@ export default function LoginPage() {
 
             if (role === 'hospital' && res.data?.hospital_id) {
                 localStorage.setItem('user', JSON.stringify({ role: 'hospital', ...res.data }));
-                navigate('/hospital/dashboard');
+                // Check if there's a saved redirect path
+                const redirectPath = getAndClearRedirectPath();
+                navigate(redirectPath || '/hospital/dashboard');
             } else {
                 localStorage.setItem('user', JSON.stringify(res.data?.admin || res.data || {}));
                 const userRole = res.data?.admin?.role;
-                navigate(userRole === 'SUPER_ADMIN' ? '/admin/dashboard' : '/doctor/dashboard');
+                // Check if there's a saved redirect path
+                const redirectPath = getAndClearRedirectPath();
+                const defaultPath = userRole === 'SUPER_ADMIN' ? '/admin/dashboard' : '/doctor/dashboard';
+                navigate(redirectPath || defaultPath);
             }
         } catch (err) {
             setError(err.message || 'Invalid credentials. Please try again.');

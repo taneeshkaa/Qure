@@ -84,73 +84,71 @@ const registerHospital = catchAsync(async (req, res, next) => {
         );
     }
 
-    // Hash hospital owner password
+    // Hash passwords up-front (before DB writes)
     const password_hash = password
         ? await bcrypt.hash(password, 10)
         : null;
-
-    // Step 3: Atomic transaction — create hospital + doctors + slots
-    const result = await prisma.$transaction(async (tx) => {
-        const hospital = await tx.hospital.create({
-            data: {
-                location_id: location.id,
-                hospital_name: hospital_name.trim(),
-                contact_person: contact_person.trim(),
-                phone_1: phone_1.trim(),
-                phone_2: phone_2 ? phone_2.trim() : null,
-                owner_name: owner_name.trim(),
-                license_number: license_number.trim(),
-                total_staff_count: total_staff_count || null,
-                email: email ? email.toLowerCase().trim() : null,
-                password_hash,
-            },
-        });
-
-        let createdDoctors = [];
-        const allSlotData = [];
-
-        if (doctors && doctors.length > 0) {
-            for (const doc of doctors) {
-                const createdDoctor = await tx.doctor.create({
-                    data: {
-                        full_name: doc.full_name.trim(),
-                        specialization: doc.specialization.trim(),
-                        experience: doc.experience || 0,
-                        hospital_id: hospital.id,
-                    },
-                });
-
-                for (let day = 1; day <= 6; day++) {
-                    allSlotData.push({
-                        doctor_id: createdDoctor.id,
-                        day_of_week: day,
-                        start_time: "09:00",
-                        end_time: "17:00",
-                        slot_duration_minutes: 30,
-                    });
-                }
-
-                createdDoctors.push(createdDoctor);
-            }
-
-            if (allSlotData.length > 0) {
-                await tx.doctorSlot.createMany({ data: allSlotData });
-            }
-        }
-
-        return { hospital, createdDoctors };
-    }, { timeout: 10000 });
-
-    // Step 4: Create the Chemist
     const staffHash = await bcrypt.hash(chemist_staff_password, 10);
 
+    // Step 3: Create hospital (sequential queries — interactive
+    // transactions hang with PgBouncer / Neon pooler connections)
+    const hospital = await prisma.hospital.create({
+        data: {
+            location_id: location.id,
+            hospital_name: hospital_name.trim(),
+            contact_person: contact_person.trim(),
+            phone_1: phone_1.trim(),
+            phone_2: phone_2 ? phone_2.trim() : null,
+            owner_name: owner_name.trim(),
+            license_number: license_number.trim(),
+            total_staff_count: total_staff_count || null,
+            email: email ? email.toLowerCase().trim() : null,
+            password_hash,
+        },
+    });
+
+    let createdDoctors = [];
+    const allSlotData = [];
+
+    if (doctors && doctors.length > 0) {
+        for (const doc of doctors) {
+            const createdDoctor = await prisma.doctor.create({
+                data: {
+                    full_name: doc.full_name.trim(),
+                    specialization: doc.specialization.trim(),
+                    experience: doc.experience || 0,
+                    hospital_id: hospital.id,
+                },
+            });
+
+            for (let day = 1; day <= 6; day++) {
+                allSlotData.push({
+                    doctor_id: createdDoctor.id,
+                    day_of_week: day,
+                    start_time: "09:00",
+                    end_time: "17:00",
+                    slot_duration_minutes: 30,
+                });
+            }
+
+            createdDoctors.push(createdDoctor);
+        }
+
+        if (allSlotData.length > 0) {
+            await prisma.doctorSlot.createMany({ data: allSlotData });
+        }
+    }
+
+    // Step 4: Create the Chemist
     const chemist = await prisma.chemist.create({
         data: {
-            hospital_id: result.hospital.id,
+            hospital_id: hospital.id,
             shop_name: chemist_shop_name.trim(),
             staff_password_hash: staffHash,
         },
     });
+
+    const result = { hospital, createdDoctors };
 
     const token = signToken(result.hospital.id);
 
@@ -312,39 +310,35 @@ const addHospitalDoctor = catchAsync(async (req, res, next) => {
         return next(new AppError("Doctor name and specialization are required", 400));
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-        const doctor = await tx.doctor.create({
-            data: {
-                full_name: full_name.trim(),
-                specialization: specialization.trim(),
-                experience: experience || 0,
-                hospital_id: req.hospital.id,
-            },
+    const doctor = await prisma.doctor.create({
+        data: {
+            full_name: full_name.trim(),
+            specialization: specialization.trim(),
+            experience: experience || 0,
+            hospital_id: req.hospital.id,
+        },
+    });
+
+    const slotData = [];
+    for (let day = 1; day <= 6; day++) {
+        slotData.push({
+            doctor_id: doctor.id,
+            day_of_week: day,
+            start_time: "09:00",
+            end_time: "17:00",
+            slot_duration_minutes: 30,
         });
-
-        const slotData = [];
-        for (let day = 1; day <= 6; day++) {
-            slotData.push({
-                doctor_id: doctor.id,
-                day_of_week: day,
-                start_time: "09:00",
-                end_time: "17:00",
-                slot_duration_minutes: 30,
-            });
-        }
-        await tx.doctorSlot.createMany({ data: slotData });
-
-        return doctor;
-    }, { timeout: 10000 });
+    }
+    await prisma.doctorSlot.createMany({ data: slotData });
 
     res.status(201).json({
         status: "success",
         message: "Doctor added successfully",
         data: {
-            doctor_id: result.id,
-            full_name: result.full_name,
-            specialization: result.specialization,
-            experience: result.experience,
+            doctor_id: doctor.id,
+            full_name: doctor.full_name,
+            specialization: doctor.specialization,
+            experience: doctor.experience,
         },
     });
 });

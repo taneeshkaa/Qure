@@ -14,9 +14,17 @@ const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
 // ─── Socket.io Setup ─────────────────────────────────────────
+const allowedOrigins = process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(",").map(url => url.trim())
+    : [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://qure-bay.vercel.app"
+    ];
+
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
         credentials: true,
     },

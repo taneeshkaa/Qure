@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AnimatedBackground from './components/AnimatedBackground';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Phase 1 pages
 import LandingPage from './pages/LandingPage';
@@ -44,7 +45,7 @@ export default function App() {
         {/* ── Phase 2 — Patient ────────────────────── */}
         <Route path="/patient/dashboard" element={<PatientDashboard />} />
         <Route path="/patient/search" element={<SearchResults />} />
-        <Route path="/patient/book/:doctorId" element={<BookingPage />} />
+        <Route path="/patient/book/:doctorId" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
         <Route path="/patient/token" element={<TokenCard />} />
         <Route path="/patient/appointments" element={<AppointmentsPage />} />
 

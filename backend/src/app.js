@@ -13,9 +13,17 @@ app.use(helmet());
 
 // ─── CORS Configuration ─────────────────────────────────────
 // Allows the React frontend (Vite dev server) to make requests
+const allowedOrigins = process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(",").map(url => url.trim())
+    : [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://qure-bay.vercel.app"
+    ];
+
 app.use(
     cors({
-        origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+        origin: allowedOrigins,
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
         credentials: true,

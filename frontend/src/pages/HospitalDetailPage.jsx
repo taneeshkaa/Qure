@@ -1,6 +1,7 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getHospitalById, getDoctorsForHospital } from '../data/mockData';
+import { isAuthenticated, saveRedirectPath } from '../utils/authRedirect';
 import SparkleCanvas from '../components/SparkleCanvas';
 
 function StarRating({ rating, size = 14 }) {
@@ -37,8 +38,23 @@ function InfoRow({ icon, label, value }) {
 
 export default function HospitalDetailPage() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const hospital = getHospitalById(id);
     const relatedDoctors = hospital ? getDoctorsForHospital(hospital.id) : [];
+
+    // Handle book button click - redirect to doctor search or register
+    const handleBookClick = () => {
+        if (isAuthenticated()) {
+            // User is logged in, go to search results filtered by this hospital
+            // For now, navigate to patient search page
+            navigate('/patient/search');
+        } else {
+            // Save the search page as redirect destination
+            saveRedirectPath('/patient/search');
+            // Redirect to register/login
+            navigate('/register');
+        }
+    };
 
     if (!hospital) {
         return (
@@ -109,11 +125,12 @@ export default function HospitalDetailPage() {
                                 </div>
                             </div>
 
-                            <Link to="/register" style={{ textDecoration: 'none', flexShrink: 0 }}>
-                                <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap' }}>
-                                    Book via QueueEase →
-                                </motion.button>
-                            </Link>
+                            <motion.button 
+                                onClick={handleBookClick}
+                                whileHover={{ scale: 1.02 }} 
+                                style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                Book via QueueEase →
+                            </motion.button>
                         </div>
                     </div>
                 </motion.div>

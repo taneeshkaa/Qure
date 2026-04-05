@@ -1,6 +1,7 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getDoctorById, getHospitalById } from '../data/mockData';
+import { isAuthenticated, saveRedirectPath } from '../utils/authRedirect';
 import SparkleCanvas from '../components/SparkleCanvas';
 
 function StarRating({ rating, size = 14 }) {
@@ -35,8 +36,22 @@ function InfoChip({ icon, label }) {
 
 export default function DoctorDetailPage() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const doc = getDoctorById(id);
     const hospital = doc ? getHospitalById(doc.hospitalId) : null;
+
+    // Handle book button click
+    const handleBookClick = () => {
+        if (isAuthenticated()) {
+            // User is already logged in, go directly to booking
+            navigate(`/patient/book/${doc.id}`);
+        } else {
+            // Save the booking page as redirect destination
+            saveRedirectPath(`/patient/book/${doc.id}`);
+            // Redirect to register/login
+            navigate('/register');
+        }
+    };
 
     if (!doc) {
         return (
@@ -120,11 +135,12 @@ export default function DoctorDetailPage() {
                         <div style={{ flexShrink: 0, textAlign: 'center' }}>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Consultation fee</p>
                             <p style={{ fontSize: '1.875rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>₹{doc.fee}</p>
-                            <Link to="/register" style={{ textDecoration: 'none' }}>
-                                <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap' }}>
-                                    Book via QueueEase →
-                                </motion.button>
-                            </Link>
+                            <motion.button 
+                                onClick={handleBookClick}
+                                whileHover={{ scale: 1.02 }} 
+                                style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap' }}>
+                                Book via QueueEase →
+                            </motion.button>
                         </div>
                     </div>
                 </motion.div>
