@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import { PatientNav } from './PatientDashboard';
 import { getDoctorById, getHospitalById } from '../../data/mockData';
 import { generateSlots } from '../../data/searchData';
-import { bookAppointment } from '../../api/search';
+import { bookAppointment, getDoctorBySlugAPI } from '../../api/search';
 
 function StarRating({ rating, size = 12 }) {
     return <div style={{ display: 'flex', gap: '2px' }}>{[1, 2, 3, 4, 5].map(i => <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= Math.round(rating) ? '#f59e0b' : '#d1fae5'}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}</div>;
@@ -14,9 +14,76 @@ function StarRating({ rating, size = 12 }) {
 export default function BookingPage() {
     const { doctorId } = useParams();
     const navigate = useNavigate();
-    const doc = getDoctorById(doctorId);
+    
+    // Doctor data state - fetches from API, falls back to mock data
+    const [doc, setDoc] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
+    
     const hospital = doc ? getHospitalById(doc.hospitalId) : null;
     const slotDays = useMemo(() => doc ? generateSlots(doctorId) : [], [doctorId, doc]);
+
+    // Fetch doctor on component mount
+    useEffect(() => {
+        const fetchDoctor = async () => {
+            try {
+                setLoading(true);
+                setFetchError(null);
+                
+                // Try to fetch from API using slug
+                console.log(`🔍 Attempting to fetch doctor with slug/ID: ${doctorId}`);
+                
+                const response = await getDoctorBySlugAPI(doctorId);
+                console.log(`✅ Successfully fetched doctor from API:`, response.data);
+                
+                // Transform API response to match booking page structure
+                const apiDoc = response.data;
+                if (apiDoc) {
+                    // Add hospitalId and name fields for compatibility with booking logic
+                    const transformedDoc = {
+                        ...apiDoc,
+                        id: apiDoc.slug || apiDoc.id,
+                        numeric_id: apiDoc.id,
+                        name: apiDoc.full_name,
+                        hospital: apiDoc.hospital?.hospital_name,
+                        hospitalId: apiDoc.hospital?.id,
+                        hospitalName: apiDoc.hospital?.hospital_name,
+                        specialty: apiDoc.specialization,
+                        designation: apiDoc.specialization,
+                        fee: apiDoc.consultation_fee || 500,
+                    };
+                    setDoc(transformedDoc);
+                    setLoading(false);
+                    return;
+                }
+            } catch (apiErr) {
+                console.warn(`⚠️ API fetch failed: ${apiErr.message}. Trying mock data...`);
+                setFetchError(apiErr.message);
+            }
+            
+            // Fallback to mock data if API fails
+            try {
+                console.log(`📚 Falling back to mock data for: ${doctorId}`);
+                const mockDoc = getDoctorById(doctorId);
+                if (mockDoc) {
+                    console.log(`✅ Found doctor in mock data:`, mockDoc);
+                    setDoc(mockDoc);
+                } else {
+                    console.log(`❌ Doctor not found in mock data either`);
+                    setFetchError(`Doctor with id "${doctorId}" not found (API: unavailable, Mock: not found)`);
+                }
+            } catch (mockErr) {
+                console.error(`❌ Mock data fetch error:`, mockErr.message);
+                setFetchError(`Failed to load doctor data: ${mockErr.message}`);
+            }
+            
+            setLoading(false);
+        };
+        
+        if (doctorId) {
+            fetchDoctor();
+        }
+    }, [doctorId]);
 
     // Multi-step form state
     const [currentStep, setCurrentStep] = useState(1); // 1=Condition, 2=Slot, 3=Payment, 4=Confirm
@@ -33,13 +100,35 @@ export default function BookingPage() {
     // Payment selection state (Default: CASH for rural-friendly)
     const [paymentMethod, setPaymentMethod] = useState('CASH');
     // Track if user has explicitly confirmed payment method (not just default)
-    const [paymentMethodConfirmed, setPaymentMethodConfirmed] = useState(false);
+    const [paymentMethodConfirmed, setPaymentMethodConfirmed] = useState(true);
 
+    // Show loading state while fetching doctor data
+    if (loading) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ fontSize: '2.5rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+                <h2 style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Loading doctor information...</h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>Fetching details for {doctorId}</p>
+            </div>
+        );
+    }
+
+    // Show error state if doctor is not found
+    console.log(`📋 Render check: doc=${!!doc}, loading=${loading}, fetchError=${fetchError}`);
     if (!doc) {
+        console.error(`❌ Doctor rendering failed. Reason:`, {
+            loading,
+            fetchError,
+            doctorId,
+            attemptedMockData: getDoctorById(doctorId),
+        });
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
                 <p style={{ fontSize: '2.5rem' }}>👨‍⚕️</p>
                 <h2 style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Doctor not found</h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '400px' }}>
+                    {fetchError || `Unable to load doctor "${doctorId}". Please check the link and try again.`}
+                </p>
                 <Link to="/doctors"><button className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }}>Browse Doctors</button></Link>
             </div>
         );

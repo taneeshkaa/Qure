@@ -105,6 +105,62 @@ const registerPatient = catchAsync(async (req, res, next) => {
     });
 });
 
+// ─── Patient Login ──────────────────────────────────────────────
+// POST /api/v1/patient/login
+// Accepts email (for dev/demo, password is optional)
+// Returns JWT token and patient info
+const loginPatient = catchAsync(async (req, res, next) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return next(new AppError("Email is required", 400));
+    }
+
+    // Search for patient by email
+    const patient = await prisma.patient.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        include: {
+            medicalProfile: {
+                select: {
+                    allergies: true,
+                    medications: true,
+                    notes: true,
+                },
+            },
+        },
+    });
+
+    if (!patient) {
+        return next(new AppError("Patient not found. Please register first.", 404));
+    }
+
+    // Generate JWT token
+    const jwt = require("jsonwebtoken");
+    const token = jwt.sign(
+        {
+            id: patient.id,
+            email: patient.email,
+            role: "PATIENT",
+        },
+        process.env.JWT_SECRET || "fallback_secret_for_dev_only",
+        { expiresIn: "7d" }
+    );
+
+    console.log(`✅ Patient login successful - Patient ID: ${patient.id}, Email: ${patient.email}`);
+
+    res.status(200).json({
+        status: "success",
+        message: "Login successful",
+        token,
+        data: {
+            patient_id: patient.id,
+            full_name: patient.full_name,
+            email: patient.email,
+            phone: patient.phone,
+            role: "PATIENT",
+        },
+    });
+});
 
 // POST /api/v1/patient/upload
 // Expects: multipart/form-data with a file, `appointment_id`, and `category`
@@ -185,4 +241,4 @@ const uploadAttachment = catchAsync(async (req, res, next) => {
     });
 });
 
-module.exports = { registerPatient, uploadAttachment };
+module.exports = { registerPatient, loginPatient, uploadAttachment };

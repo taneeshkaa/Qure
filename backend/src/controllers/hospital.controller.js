@@ -40,6 +40,9 @@ const registerHospital = catchAsync(async (req, res, next) => {
         password,
     } = req.body;
 
+    console.log(`🏥 Starting hospital registration: ${hospital_name} in ${city}, ${state}`);
+    let startTime = Date.now();
+
     // Validate email uniqueness
     if (email) {
         const emailExists = await prisma.hospital.findUnique({
@@ -65,6 +68,9 @@ const registerHospital = catchAsync(async (req, res, next) => {
                 city_name: city.trim(),
             },
         });
+        console.log(`✅ Location created: ${state} > ${city}`);
+    } else {
+        console.log(`✅ Location found: ${state} > ${city}`);
     }
 
     // Step 2: Check if this hospital already exists in this location
@@ -89,6 +95,7 @@ const registerHospital = catchAsync(async (req, res, next) => {
         ? await bcrypt.hash(password, 10)
         : null;
     const staffHash = await bcrypt.hash(chemist_staff_password, 10);
+    console.log(`✅ Passwords hashed (${Date.now() - startTime}ms)`);
 
     // Step 3: Create hospital (sequential queries — interactive
     // transactions hang with PgBouncer / Neon pooler connections)
@@ -106,20 +113,29 @@ const registerHospital = catchAsync(async (req, res, next) => {
             password_hash,
         },
     });
+    console.log(`✅ Hospital created: ID ${hospital.id} (${Date.now() - startTime}ms)`);
 
     let createdDoctors = [];
     const allSlotData = [];
 
     if (doctors && doctors.length > 0) {
+        console.log(`📋 Creating ${doctors.length} doctors...`);
         for (const doc of doctors) {
+            // Generate slug from full_name: "Dr. Priya Mehta" → "dr-priya-mehta"
+            const nameForSlug = doc.full_name.replace(/^Dr\.\s*/i, '').trim();
+            const slug = `dr-${nameForSlug.toLowerCase().replace(/\s+/g, '-')}`;
+            
             const createdDoctor = await prisma.doctor.create({
                 data: {
                     full_name: doc.full_name.trim(),
+                    slug: slug,
                     specialization: doc.specialization.trim(),
+                    consultation_fee: doc.fee ? parseInt(doc.fee, 10) : (doc.consultation_fee ? parseInt(doc.consultation_fee, 10) : 500),
                     experience: doc.experience || 0,
                     hospital_id: hospital.id,
                 },
             });
+            console.log(`  ✅ Doctor created: ${createdDoctor.full_name} (${createdDoctor.specialization}) → slug: ${slug}`);
 
             for (let day = 1; day <= 6; day++) {
                 allSlotData.push({
@@ -135,7 +151,9 @@ const registerHospital = catchAsync(async (req, res, next) => {
         }
 
         if (allSlotData.length > 0) {
+            console.log(`📅 Creating ${allSlotData.length} doctor slots...`);
             await prisma.doctorSlot.createMany({ data: allSlotData });
+            console.log(`✅ All doctor slots created (${Date.now() - startTime}ms)`);
         }
     }
 
@@ -147,6 +165,7 @@ const registerHospital = catchAsync(async (req, res, next) => {
             staff_password_hash: staffHash,
         },
     });
+    console.log(`✅ Chemist created: ${chemist.shop_name} (${Date.now() - startTime}ms total)`);
 
     const result = { hospital, createdDoctors };
 

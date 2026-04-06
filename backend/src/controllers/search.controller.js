@@ -38,6 +38,7 @@ const searchByKeyword = catchAsync(async (req, res, next) => {
         searchType = "keyword";
         doctors = await prisma.doctor.findMany({
             where: {
+                deletedAt: null, // Exclude soft-deleted doctors
                 specialization: {
                     in: specializations,
                 },
@@ -68,6 +69,7 @@ const searchByKeyword = catchAsync(async (req, res, next) => {
         searchType = "doctor_name";
         doctors = await prisma.doctor.findMany({
             where: {
+                deletedAt: null, // Exclude soft-deleted doctors
                 full_name: {
                     contains: query,
                     mode: "insensitive",

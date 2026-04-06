@@ -3,7 +3,7 @@ import axios from 'axios';
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
     headers: { 'Content-Type': 'application/json' },
-    timeout: 15000,
+    timeout: 60000, // Increased to 60 seconds for operations with multiple doctor/slot creation
 });
 
 // ─── Attach JWT on every request ─────────────────────────────

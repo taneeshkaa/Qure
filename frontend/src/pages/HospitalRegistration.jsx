@@ -63,7 +63,7 @@ export default function HospitalRegistration() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [serverError, setServerError] = useState('');
-    const [doctors, setDoctors] = useState([{ id: 1, name: '', specialty: '' }]);
+    const [doctors, setDoctors] = useState([{ id: 1, name: '', specialty: '', fee: '500' }]);
     const [doctorErrors, setDoctorErrors] = useState({});
     const navigate = useNavigate();
 
@@ -78,7 +78,7 @@ export default function HospitalRegistration() {
 
     const goTo = (next) => { setDir(next > step ? 1 : -1); setStep(next); };
 
-    const addDoctor = () => setDoctors(d => [...d, { id: Date.now(), name: '', specialty: '' }]);
+    const addDoctor = () => setDoctors(d => [...d, { id: Date.now(), name: '', specialty: '', fee: '500' }]);
     const removeDoctor = (id) => setDoctors(d => d.filter(doc => doc.id !== id));
     const updateDoctor = (id, field, val) => setDoctors(d => d.map(doc => doc.id === id ? { ...doc, [field]: val } : doc));
 
@@ -122,7 +122,8 @@ export default function HospitalRegistration() {
                 doctors: doctors.map(doc => ({
                     full_name: doc.name,
                     specialization: doc.specialty,
-                    experience: 0
+                    experience: 0,
+                    fee: doc.fee
                 }))
             };
 
@@ -247,16 +248,23 @@ export default function HospitalRegistration() {
                                                         onChange={e => updateDoctor(doc.id, 'name', e.target.value)}
                                                         error={doctorErrors[doc.id]?.name?.[0]}
                                                     />
-                                                    <div style={{ position: 'relative' }}>
-                                                        <SearchableSelect
-                                                            label="Specialty"
-                                                            options={SPECIALTIES}
-                                                            value={doc.specialty}
-                                                            onChange={v => updateDoctor(doc.id, 'specialty', v)}
-                                                            error={doctorErrors[doc.id]?.specialty?.[0]}
-                                                            placeholder="Select..."
-                                                        />
-                                                    </div>
+                                                    <FloatingLabelInput
+                                                        label="Consultation Fee (₹)"
+                                                        placeholder="e.g. 500"
+                                                        value={doc.fee || ''}
+                                                        onChange={e => updateDoctor(doc.id, 'fee', e.target.value)}
+                                                        error={doctorErrors[doc.id]?.fee?.[0]}
+                                                    />
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                    <SearchableSelect
+                                                        label="Specialty"
+                                                        options={SPECIALTIES}
+                                                        value={doc.specialty}
+                                                        onChange={v => updateDoctor(doc.id, 'specialty', v)}
+                                                        error={doctorErrors[doc.id]?.specialty?.[0]}
+                                                        placeholder="Select specialty..."
+                                                    />
                                                 </div>
                                             </motion.div>
                                         ))}

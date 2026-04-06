@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import PulseButton from '../components/PulseButton';
-import { loginHospital, loginAdmin } from '../api/auth';
+import { loginHospital, loginAdmin, loginPatient } from '../api/auth';
 import { getAndClearRedirectPath } from '../utils/authRedirect';
 
 const ROLES = [
@@ -39,20 +39,32 @@ export default function LoginPage() {
         e.preventDefault();
         if (!email || !password) { setError('Please fill in all fields.'); return; }
 
-        // Patient login logic (simulated for demo purposes since patients don't have passwords in backend)
-        if (role === 'patient') {
-            localStorage.setItem('token', 'simulated_patient_token');
-            localStorage.setItem('user', JSON.stringify({ email: email.trim(), role: 'patient' }));
-            
-            // Check if there's a saved redirect path (from ProtectedRoute)
-            const redirectPath = getAndClearRedirectPath();
-            navigate(redirectPath || '/patient/dashboard');
-            return;
-        }
-
         setLoading(true);
         setError('');
+
         try {
+            // Patient login (email-based for dev/demo)
+            if (role === 'patient') {
+                console.log('🔐 Patient login attempt with email:', email);
+                const res = await loginPatient(email.trim());
+
+                // Persist session
+                localStorage.setItem('token', res.token);
+                localStorage.setItem('user', JSON.stringify({
+                    id: res.data.patient_id,
+                    email: res.data.email,
+                    role: 'patient',
+                    full_name: res.data.full_name,
+                }));
+
+                console.log('✅ Patient login successful, ID:', res.data.patient_id);
+
+                // Check if there's a saved redirect path (from ProtectedRoute)
+                const redirectPath = getAndClearRedirectPath();
+                navigate(redirectPath || '/patient/dashboard');
+                return;
+            }
+
             // Hospital owners use /hospital/login, everything else uses /admin/login
             const res = role === 'hospital'
                 ? await loginHospital(email.trim(), password)

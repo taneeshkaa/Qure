@@ -216,4 +216,153 @@ const getPatientAttachments = catchAsync(async (req, res, next) => {
     });
 });
 
-module.exports = { getPatientCard, prescribe, getPatientAttachments };
+// ─── Get All Doctors (Patient-facing) ─────────────────────────
+// GET /api/v1/doctors
+// Optional query params: ?specialty=Neurologist (case-insensitive)
+const getDoctors = catchAsync(async (req, res, next) => {
+    const { specialty } = req.query;
+
+    const where = {
+        deletedAt: null, // Exclude soft-deleted doctors
+    };
+    if (specialty && specialty.trim()) {
+        where.specialization = {
+            contains: specialty.trim(),
+            mode: 'insensitive',
+        };
+    }
+
+    const doctors = await prisma.doctor.findMany({
+        where,
+        include: {
+            hospital: {
+                select: {
+                    id: true,
+                    hospital_name: true,
+                    phone_1: true,
+                    location: {
+                        select: {
+                            state_name: true,
+                            city_name: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: { full_name: 'asc' },
+    });
+
+    console.log(`📋 Fetching doctors${specialty ? ` (specialty: ${specialty})` : ''} - Found ${doctors.length} results`);
+
+    res.status(200).json({
+        status: "success",
+        results: doctors.length,
+        data: doctors,
+    });
+});
+
+// ─── Get Doctor by ID (Patient-facing) ────────────────────────
+// GET /api/v1/doctors/:id
+const getDoctorById = catchAsync(async (req, res, next) => {
+    const doctorId = parseInt(req.params.id, 10);
+
+    if (isNaN(doctorId)) {
+        return next(new AppError("Invalid doctor ID", 400));
+    }
+
+    const doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId },
+        include: {
+            hospital: {
+                select: {
+                    id: true,
+                    hospital_name: true,
+                    phone_1: true,
+                    phone_2: true,
+                    address: true,
+                    location: {
+                        select: {
+                            state_name: true,
+                            city_name: true,
+                        },
+                    },
+                },
+            },
+            slots: {
+                select: {
+                    day_of_week: true,
+                    start_time: true,
+                    end_time: true,
+                    slot_duration_minutes: true,
+                },
+            },
+        },
+    });
+
+    if (!doctor) {
+        return next(new AppError(`Doctor with ID ${doctorId} not found`, 404));
+    }
+
+    console.log(`✅ Fetched doctor: ${doctor.full_name} (ID: ${doctorId})`);
+
+    res.status(200).json({
+        status: "success",
+        data: doctor,
+    });
+});
+
+// ─── Get Doctor by Slug (Patient-facing) ─────────────────────
+// GET /api/v1/doctors/slug/:slug
+// Fetches doctor by URL-friendly slug (e.g., "dr-priya-mehta")
+const getDoctorBySlug = catchAsync(async (req, res, next) => {
+    const { slug } = req.params;
+
+    if (!slug || typeof slug !== 'string') {
+        return next(new AppError("Invalid slug parameter", 400));
+    }
+
+    const doctor = await prisma.doctor.findFirst({
+        where: { 
+            slug: slug.toLowerCase(),
+            deletedAt: null, // Exclude soft-deleted doctors
+        },
+        include: {
+            hospital: {
+                select: {
+                    id: true,
+                    hospital_name: true,
+                    phone_1: true,
+                    phone_2: true,
+                    address: true,
+                    location: {
+                        select: {
+                            state_name: true,
+                            city_name: true,
+                        },
+                    },
+                },
+            },
+            slots: {
+                select: {
+                    day_of_week: true,
+                    start_time: true,
+                    end_time: true,
+                    slot_duration_minutes: true,
+                },
+            },
+        },
+    });
+
+    if (!doctor) {
+        return next(new AppError(`Doctor with slug "${slug}" not found`, 404));
+    }
+
+    console.log(`✅ Fetched doctor by slug: ${doctor.full_name} (slug: ${slug})`);
+
+    res.status(200).json({
+        status: "success",
+        data: doctor,
+    });
+});
+
+module.exports = { getPatientCard, prescribe, getPatientAttachments, getDoctors, getDoctorById, getDoctorBySlug };

@@ -1,7 +1,8 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { getHospitalById, getDoctorsForHospital } from '../data/mockData';
-import { isAuthenticated, saveRedirectPath } from '../utils/authRedirect';
+import { getHospitalByIdAPI } from '../api/search';
+import { isAuthenticated, saveRedirectPath, getUserRole } from '../utils/authRedirect';
 import SparkleCanvas from '../components/SparkleCanvas';
 
 function StarRating({ rating, size = 14 }) {
@@ -39,32 +40,89 @@ function InfoRow({ icon, label, value }) {
 export default function HospitalDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const hospital = getHospitalById(id);
-    const relatedDoctors = hospital ? getDoctorsForHospital(hospital.id) : [];
+    const [hospital, setHospital] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [userRole, setUserRole] = useState(null);
+    const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
 
-    // Handle book button click - redirect to doctor search or register
+    // Fetch hospital by ID on mount
+    useEffect(() => {
+        const fetchHospital = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                console.log(`🏥 Fetching hospital ${id}...`);
+                
+                const response = await getHospitalByIdAPI(id);
+                console.log('✅ Hospital API Response:', response);
+                
+                const hospitalData = response.data?.data || response.data || null;
+                setHospital(hospitalData);
+            } catch (err) {
+                console.error('❌ Error fetching hospital:', err);
+                setError(err.message || 'Failed to load hospital');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchHospital();
+        }
+    }, [id]);
+
+    // Check auth state on mount and when route changes
+    useEffect(() => {
+        setIsUserAuthenticated(isAuthenticated());
+        setUserRole(getUserRole());
+    }, []);
+
+    // Handle book button click - logs in for patients, or scrolls to doctors section
     const handleBookClick = () => {
-        if (isAuthenticated()) {
-            // User is logged in, go to search results filtered by this hospital
-            // For now, navigate to patient search page
-            navigate('/patient/search');
-        } else {
-            // Save the search page as redirect destination
-            saveRedirectPath('/patient/search');
-            // Redirect to register/login
+        if (!isUserAuthenticated) {
+            saveRedirectPath(`/hospitals/${id}`);
             navigate('/register');
+        } else if (userRole === 'patient') {
+            // Scroll to the doctors section on this page for patient to select a doctor
+            const doctorsSection = document.getElementById('doctors-section');
+            if (doctorsSection) {
+                doctorsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } else {
+            // Healthcare provider trying to book (shouldn't happen in normal flow)
+            navigate('/patient/search');
         }
     };
 
-    if (!hospital) {
+    // Loading state
+    if (loading) {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
+                <p style={{ fontSize: '3rem' }}>⏳</p>
+                <h2 style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Loading hospital details...</h2>
+            </div>
+        );
+    }
+
+    // Error or not found state
+    if (error || !hospital) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px' }}>
                 <p style={{ fontSize: '3rem' }}>🏥</p>
                 <h2 style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Hospital not found</h2>
+                {error && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{error}</p>}
                 <Link to="/hospitals"><button className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }}>Browse hospitals</button></Link>
             </div>
         );
     }
+
+    const hospitalName = hospital.hospital_name || 'Hospital';
+    const doctorsList = hospital.doctors || [];
+    const stateName = hospital.location?.state_name || '';
+    const cityName = hospital.location?.city_name || '';
+    const address = hospital.address || 'Address not available';
+    const phone = hospital.phone_1 || hospital.phone_2 || 'Contact not available';
 
     return (
         <div style={{ minHeight: '100vh', position: 'relative', zIndex: 2 }}>
@@ -95,7 +153,7 @@ export default function HospitalDetailPage() {
                         {' '} · {' '}
                         <Link to="/hospitals" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Hospitals</Link>
                         {' '} · {' '}
-                        <span style={{ color: 'var(--text-primary)' }}>{hospital.name}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{hospitalName}</span>
                     </p>
 
                     <div className="card" style={{ padding: '32px' }}>
@@ -105,23 +163,13 @@ export default function HospitalDetailPage() {
 
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                                    <h1 style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.625rem)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>{hospital.name}</h1>
-                                    <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.7125rem', fontWeight: 700, background: hospital.type === 'Government' ? 'rgba(99,102,241,0.08)' : 'var(--accent-bg)', border: `1px solid ${hospital.type === 'Government' ? 'rgba(99,102,241,0.2)' : 'rgba(11,158,135,0.2)'}`, color: hospital.type === 'Government' ? '#4f46e5' : 'var(--accent-dark)' }}>
-                                        {hospital.type}
-                                    </span>
+                                    <h1 style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.625rem)', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-primary)' }}>{hospitalName}</h1>
                                 </div>
-                                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>📍 {hospital.address}</p>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>📍 {address}</p>
 
                                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <StarRating rating={hospital.rating} />
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{hospital.rating}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({hospital.reviewCount.toLocaleString()} reviews)</span>
-                                    </div>
-                                    <span style={{ color: 'var(--border)' }}>·</span>
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Est. {hospital.established}</span>
-                                    <span style={{ color: 'var(--border)' }}>·</span>
-                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{hospital.beds} beds</span>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>📍 {cityName}, {stateName}</span>
+                                    {doctorsList.length > 0 && <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>👨‍⚕️ {doctorsList.length} doctors</span>}
                                 </div>
                             </div>
 
@@ -129,7 +177,7 @@ export default function HospitalDetailPage() {
                                 onClick={handleBookClick}
                                 whileHover={{ scale: 1.02 }} 
                                 style={{ padding: '11px 22px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 4px 14px rgba(11,158,135,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                Book via QueueEase →
+                                {isUserAuthenticated && userRole === 'patient' ? 'Book via QueueEase →' : 'Register on QueueEase →'}
                             </motion.button>
                         </div>
                     </div>
@@ -140,72 +188,61 @@ export default function HospitalDetailPage() {
                     {/* LEFT */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         {/* About */}
-                        <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                            <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>About</h2>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.75 }}>{hospital.about}</p>
-                        </motion.div>
+                        {hospital.about && (
+                            <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                                <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>About</h2>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.75 }}>{hospital.about}</p>
+                            </motion.div>
+                        )}
 
                         {/* Specialties */}
-                        <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                            <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text-primary)' }}>Specialties</h2>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {hospital.specialties.map(s => (
-                                    <span key={s} style={{ padding: '7px 14px', borderRadius: '20px', background: 'var(--accent-bg)', border: '1px solid rgba(11,158,135,0.2)', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--accent-dark)' }}>{s}</span>
-                                ))}
-                            </div>
-                        </motion.div>
-
-                        {/* Doctors at this hospital */}
-                        {relatedDoctors.length > 0 && (
-                            <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                                <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
-                                    Doctors at this hospital <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({relatedDoctors.length})</span>
-                                </h2>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {relatedDoctors.map(doc => (
-                                        <Link key={doc.id} to={`/doctors/${doc.id}`} style={{ textDecoration: 'none' }}>
-                                            <motion.div whileHover={{ x: 4 }} style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', transition: 'border-color 0.15s' }}
-                                                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(11,158,135,0.3)'}
-                                                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-                                            >
-                                                <Avatar initials={doc.name.split(' ').slice(1).map(n => n[0]).join('').slice(0, 2)} size={44} />
-                                                <div style={{ flex: 1 }}>
-                                                    <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>{doc.name}</p>
-                                                    <p style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 500 }}>{doc.specialty}</p>
-                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{doc.experience} yrs exp · {doc.patients} patients</p>
-                                                </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                                    <StarRating rating={doc.rating} size={12} />
-                                                    <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)' }}>₹{doc.fee}</p>
-                                                </div>
-                                            </motion.div>
-                                        </Link>
+                        {doctorsList.length > 0 && (
+                            <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                                <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '14px', color: 'var(--text-primary)' }}>Specialties</h2>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                    {[...new Set(doctorsList.map(d => d.specialization))].map(specialty => (
+                                        <span key={specialty} style={{ padding: '7px 14px', borderRadius: '20px', background: 'var(--accent-bg)', border: '1px solid rgba(11,158,135,0.2)', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--accent-dark)' }}>{specialty}</span>
                                     ))}
                                 </div>
                             </motion.div>
                         )}
 
-                        {/* Reviews */}
-                        <motion.div className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                            <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>Patient Reviews</h2>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {hospital.reviews.map((r, i) => (
-                                    <div key={i} style={{ padding: '16px', borderRadius: '10px', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <Avatar initials={r.author.split(' ').map(n => n[0]).join('')} size={34} />
-                                                <div>
-                                                    <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{r.author}</p>
-                                                    <StarRating rating={r.rating} size={11} />
-                                                </div>
-                                            </div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.date}</span>
-                                        </div>
-                                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65, fontStyle: 'italic' }}>"{r.text}"</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
+                        {/* Doctors at this hospital */}
+                        {doctorsList.length > 0 && (
+                            <motion.div id="doctors-section" className="card" style={{ padding: '24px' }} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                                <h2 style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: '16px', color: 'var(--text-primary)' }}>
+                                    Doctors at this hospital <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({doctorsList.length})</span>
+                                </h2>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {doctorsList.map(doc => {
+                                        // Use the slug from API response; fallback to client-generated slug if missing
+                                        const doctorSlug = doc.slug || (() => {
+                                            const nameWithoutTitle = doc.full_name.replace(/^Dr\.\s*/i, '').trim();
+                                            return `dr-${nameWithoutTitle.toLowerCase().replace(/\s+/g, '-')}`;
+                                        })();
+                                        return (
+                                            <Link key={doc.id} to={`/patient/book/${doctorSlug}`} style={{ textDecoration: 'none' }}>
+                                                <motion.div whileHover={{ x: 4 }} style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', transition: 'border-color 0.15s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(11,158,135,0.3)'}
+                                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                                                >
+                                                    <Avatar initials={doc.full_name.split(' ').slice(1).map(n => n[0]).join('').slice(0, 2)} size={44} />
+                                                    <div style={{ flex: 1 }}>
+                                                        <p style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>{doc.full_name}</p>
+                                                        <p style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 500 }}>{doc.specialization}</p>
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
+                                                            {doc.experience > 0 && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{doc.experience} yrs exp</p>}
+                                                            {doc.consultation_fee && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>• ₹{doc.consultation_fee} consultation</p>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>Book →</div>
+                                                </motion.div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        )}
                     </div>
 
                     {/* RIGHT sidebar */}
@@ -213,22 +250,41 @@ export default function HospitalDetailPage() {
                         {/* Quick info */}
                         <motion.div className="card" style={{ padding: '20px' }} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
                             <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Hospital Info</h3>
-                            <InfoRow icon="📞" label="Phone" value={hospital.phone} />
-                            <InfoRow icon="📍" label="City" value={`${hospital.city}, ${hospital.state}`} />
-                            <InfoRow icon="🛏️" label="Total Beds" value={hospital.beds} />
-                            <InfoRow icon="📅" label="Established" value={hospital.established} />
-                            <InfoRow icon="⭐" label="Rating" value={`${hospital.rating} / 5.0 (${hospital.reviewCount.toLocaleString()} reviews)`} />
+                            <InfoRow icon="📞" label="Phone" value={phone} />
+                            <InfoRow icon="📍" label="City" value={`${cityName}, ${stateName}`} />
+                            {hospital.total_staff_count && <InfoRow icon="👥" label="Staff" value={hospital.total_staff_count} />}
                         </motion.div>
 
                         {/* CTA card */}
                         <motion.div style={{ padding: '24px', borderRadius: '16px', background: 'linear-gradient(135deg, #f0fdfb 0%, #ffffff 100%)', border: '1.5px solid rgba(11,158,135,0.25)' }} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-                            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Book an appointment</p>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>Get a digital token and skip the waiting room.</p>
-                            <Link to="/register" style={{ textDecoration: 'none' }}>
-                                <button style={{ width: '100%', padding: '11px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 3px 10px rgba(11,158,135,0.3)' }}>
-                                    Register on QueueEase →
-                                </button>
-                            </Link>
+                            {isUserAuthenticated && userRole !== 'patient' ? (
+                                // Healthcare provider (hospital/doctor/chemist/admin logged in)
+                                <>
+                                    <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Hospital Profile</p>
+                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>You're logged in as a healthcare provider. Patients can book appointments with doctors at this hospital.</p>
+                                </>
+                            ) : (
+                                // Patient or not authenticated
+                                <>
+                                    <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Book an appointment</p>
+                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>Get a digital token and skip the waiting room.</p>
+                                    {isUserAuthenticated && userRole === 'patient' ? (
+                                        // Logged in as patient - direct booking button
+                                        <button 
+                                            onClick={handleBookClick}
+                                            style={{ width: '100%', padding: '11px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 3px 10px rgba(11,158,135,0.3)' }}>
+                                            Book via QueueEase →
+                                        </button>
+                                    ) : (
+                                        // Not logged in - registration button
+                                        <Link to="/register" style={{ textDecoration: 'none' }}>
+                                            <button style={{ width: '100%', padding: '11px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '9px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'Inter, sans-serif', boxShadow: '0 3px 10px rgba(11,158,135,0.3)' }}>
+                                                Register on QueueEase →
+                                            </button>
+                                        </Link>
+                                    )}
+                                </>
+                            )}
                         </motion.div>
                     </div>
                 </div>

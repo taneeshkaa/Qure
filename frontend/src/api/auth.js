@@ -1,5 +1,10 @@
 import api from './axios';
 
+// ─── Patient Login ─────────────────────────────────────────────
+// Backend: POST /api/v1/patient/login
+export const loginPatient = (email) =>
+    api.post('/patient/login', { email });
+
 // ─── Hospital Owner Login ──────────────────────────────────────
 // Backend: POST /api/v1/hospital/login
 export const loginHospital = (email, password) =>

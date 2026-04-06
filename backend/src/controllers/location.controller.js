@@ -86,4 +86,108 @@ const getHospitals = catchAsync(async (req, res, next) => {
     });
 });
 
-module.exports = { getStates, getCities, getHospitals };
+// ─── GET /api/v1/locations/all-hospitals ─────────────────────
+// Returns ALL hospitals (for patient-facing browse pages)
+// Optional filter: ?state=Maharashtra or ?specialty=Neurology (searches doctors)
+const getAllHospitals = catchAsync(async (req, res, next) => {
+    const { state, specialty } = req.query;
+
+    const where = {};
+    if (state && state.trim()) {
+        where.location = {
+            state_name: state.trim(),
+        };
+    }
+
+    let hospitals = await prisma.hospital.findMany({
+        where,
+        include: {
+            location: {
+                select: {
+                    state_name: true,
+                    city_name: true,
+                },
+            },
+            doctors: {
+                select: {
+                    specialization: true,
+                },
+            },
+        },
+        orderBy: [
+            { location: { state_name: "asc" } },
+            { hospital_name: "asc" },
+        ],
+    });
+
+    // If specialty filter is provided, only return hospitals with that specialist
+    if (specialty && specialty.trim()) {
+        hospitals = hospitals.filter(h =>
+            h.doctors.some(d =>
+                d.specialization.toLowerCase().includes(specialty.trim().toLowerCase())
+            )
+        );
+    }
+
+    // Remove the doctors list from response (we don't need it)
+    const hospitalData = hospitals.map(({ doctors, ...rest }) => rest);
+
+    console.log(
+        `📋 Fetching all hospitals${state ? ` (state: ${state})` : ""}${specialty ? ` (specialty: ${specialty})` : ""} - Found ${hospitalData.length} results`
+    );
+
+    res.status(200).json({
+        status: "success",
+        results: hospitalData.length,
+        data: hospitalData,
+    });
+});
+
+// ─── GET /api/v1/hospitals/:id ────────────────────────────────
+// Get a single hospital's full profile (patient-facing detail page)
+// Includes all doctors at the hospital
+const getHospitalById = catchAsync(async (req, res, next) => {
+    const hospitalId = parseInt(req.params.id, 10);
+
+    if (isNaN(hospitalId)) {
+        return next(new AppError("Invalid hospital ID", 400));
+    }
+
+    const hospital = await prisma.hospital.findUnique({
+        where: { id: hospitalId },
+        include: {
+            location: {
+                select: {
+                    state_name: true,
+                    city_name: true,
+                },
+            },
+            doctors: {
+                where: {
+                    deletedAt: null, // Exclude soft-deleted doctors
+                },
+                select: {
+                    id: true,
+                    full_name: true,
+                    slug: true,
+                    specialization: true,
+                    experience: true,
+                    consultation_fee: true,
+                },
+            },
+        },
+    });
+
+    if (!hospital) {
+        return next(new AppError(`Hospital with ID ${hospitalId} not found`, 404));
+    }
+
+    console.log(`🏥 Fetching hospital by ID: ${hospitalId} - ${hospital.hospital_name}`);
+
+    res.status(200).json({
+        status: "success",
+        data: hospital,
+    });
+});
+
+module.exports = { getStates, getCities, getHospitals, getAllHospitals, getHospitalById };

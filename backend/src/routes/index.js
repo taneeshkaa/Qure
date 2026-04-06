@@ -34,6 +34,7 @@ router.use("/appointments", appointmentRoutes);
 
 // ─── Phase 3: Doctor Consultation & Chemist ──────────────────
 router.use("/doctor", doctorRoutes);
+router.use("/doctors", doctorRoutes); // plural alias — frontend uses /doctors
 router.use("/chemist", chemistRoutes);
 
 // ─── Phase 4: Admin Control & File Uploads ───────────────────

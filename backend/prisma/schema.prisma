@@ -62,9 +62,11 @@ model Hospital {
 model Doctor {
   id             Int    @id @default(autoincrement())
   full_name      String
-  specialization String
-  experience     Int    @default(0) // Years of practice
-  hospital_id    Int
+  slug           String? // URL-friendly slug for routing: "dr-priya-mehta"
+  specialization   String
+  consultation_fee Int    @default(500)
+  experience       Int    @default(0) // Years of practice
+  hospital_id      Int
 
   deletedAt DateTime? @map("deleted_at") // Phase 4 Soft Delete
 

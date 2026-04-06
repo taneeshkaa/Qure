@@ -3,64 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import { PatientNav } from './PatientDashboard';
+import { getMyAppointments, cancelAppointmentAPI } from '../../api/search';
 
-/* ── Demo upcoming appointments ─────────────────────────────── */
-function makeFutureDate(hoursFromNow) {
-    const d = new Date();
-    d.setHours(d.getHours() + hoursFromNow);
-    return d;
-}
-
-const DEMO_APPOINTMENTS = [
-    {
-        id: 1,
-        token: 7,
-        doctor: 'Dr. Priya Mehta',
-        specialty: 'Cardiology',
-        hospital: 'Apollo Hospitals, Navi Mumbai',
-        date: makeFutureDate(0.5),  // 30 min from now — urgent
-        condition: 'Recurring chest pain after physical activity for the past 3 days.',
-        fee: 1200,
-        status: 'upcoming',
-    },
-    {
-        id: 2,
-        token: 22,
-        doctor: 'Dr. Rahul Sharma',
-        specialty: 'Neurology',
-        hospital: 'AIIMS New Delhi',
-        date: makeFutureDate(26),   // ~1 day from now — 24h alert
-        condition: 'Frequent migraines for the past month, 4–5 times a week.',
-        fee: 1500,
-        status: 'upcoming',
-    },
-    {
-        id: 3,
-        token: 15,
-        doctor: 'Dr. Sneha Iyer',
-        specialty: 'Pediatrics',
-        hospital: 'Manipal Hospital, Bengaluru',
-        date: makeFutureDate(72),   // 3 days — normal
-        condition: "Child's annual vaccination and general checkup.",
-        fee: 800,
-        status: 'upcoming',
-    },
-    {
-        id: 4,
-        token: 3,
-        doctor: 'Dr. Kavitha Rao',
-        specialty: 'Dermatology',
-        hospital: 'KIMS Hospital, Hyderabad',
-        date: makeFutureDate(-48),  // past — completed
-        condition: 'Recurring eczema on arms and neck.',
-        fee: 900,
-        status: 'completed',
-    },
-];
-
-/* Returns { days, hours, minutes, seconds, urgent, soon, past } */
+/* ── Countdown hook for remaining time ─────────────────────── */
 function useCountdown(targetDate) {
-    // eslint-disable-next-line react-hooks/purity
     const [diff, setDiff] = useState(targetDate - Date.now());
 
     useEffect(() => {
@@ -76,13 +22,15 @@ function useCountdown(targetDate) {
         minutes: Math.floor((totalSec % 3600) / 60),
         seconds: totalSec % 60,
         urgent: diff < 3_600_000,       // < 1 hour
-        soon: diff < 86_400_000,      // < 1 day
+        soon: diff < 86_400_000,        // < 1 day
         past: false,
     };
 }
 
 function CountdownBadge({ date }) {
     const c = useCountdown(date);
+    
+    // Completed or past appointments
     if (c.past) return <span style={{ padding: '4px 12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, color: '#15803d' }}>✓ Completed</span>;
 
     const bg = c.urgent ? 'rgba(239,68,68,0.08)' : c.soon ? 'rgba(245,158,11,0.08)' : 'var(--accent-bg)';
@@ -126,18 +74,28 @@ function AlertBanner({ appointment }) {
     );
 }
 
-function AppointmentCard({ appt }) {
+function AppointmentCard({ appt, onCancel }) {
     const [expanded, setExpanded] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const c = useCountdown(appt.date);
-    const isPast = appt.status === 'completed' || c.past;
+    const isPast = appt.status === 'completed' || appt.status === 'cancelled' || c.past;
 
     const dateStr = appt.date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
     const timeStr = appt.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
+    // Status badge styling
+    const getStatusBadge = () => {
+        if (appt.status === 'booked' || appt.status === 'confirmed') return { text: '📅 Confirmed', color: 'var(--accent-dark)' };
+        if (appt.status === 'completed') return { text: '✓ Completed', color: '#15803d' };
+        if (appt.status === 'cancelled') return { text: '✕ Cancelled', color: '#dc2626' };
+        return { text: '—', color: 'var(--text-muted)' };
+    };
+    const statusBadge = getStatusBadge();
+
     return (
-        <motion.div layout className="card" style={{ overflow: 'hidden', opacity: isPast ? 0.75 : 1, transition: 'opacity 0.2s, border-color 0.2s' }}
+        <motion.div layout className="card" style={{ overflow: 'hidden', opacity: isPast ? 0.7 : 1, transition: 'opacity 0.2s, border-color 0.2s', borderColor: isPast ? 'rgba(0,0,0,0.08)' : 'var(--border)' }}
             onMouseEnter={e => !isPast && (e.currentTarget.style.borderColor = 'rgba(11,158,135,0.3)')}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+            onMouseLeave={e => e.currentTarget.style.borderColor = isPast ? 'rgba(0,0,0,0.08)' : 'var(--border)'}>
             <div style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
                     {/* Token badge */}
@@ -149,24 +107,39 @@ function AppointmentCard({ appt }) {
                     <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
                             <div>
-                                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>{appt.doctor}</h3>
-                                <p style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 500 }}>{appt.specialty}</p>
+                                <h3 style={{ fontSize: '0.9375rem', fontWeight: 700, color: isPast ? '#999' : 'var(--text-primary)' }}>{appt.doctor}</h3>
+                                <p style={{ fontSize: '0.8125rem', color: isPast ? '#bbb' : 'var(--accent-dark)', fontWeight: 500 }}>{appt.specialty}</p>
                             </div>
-                            <CountdownBadge date={appt.date} />
+                            {isPast ? (
+                                <span style={{ padding: '4px 12px', background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, color: statusBadge.color }}>
+                                    {statusBadge.text}
+                                </span>
+                            ) : (
+                                <CountdownBadge date={appt.date} />
+                            )}
                         </div>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>🏥 {appt.hospital}</p>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>📅 {dateStr} · 🕐 {timeStr} · ₹{appt.fee}</p>
+                        <p style={{ fontSize: '0.8125rem', color: isPast ? '#bbb' : 'var(--text-secondary)', marginBottom: '8px' }}>🏥 {appt.hospital}</p>
+                        <p style={{ fontSize: '0.8125rem', color: isPast ? '#ccc' : 'var(--text-muted)' }}>📅 {dateStr} · {appt.slot} · ₹{appt.fee}</p>
                     </div>
                 </div>
 
-                {/* Expand toggle */}
+                {/* Expand toggle + actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
-                    <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 600, fontFamily: 'Inter, sans-serif', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button onClick={() => setExpanded(!expanded)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: isPast ? '#ccc' : 'var(--accent-dark)', fontWeight: 600, fontFamily: 'Inter, sans-serif', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         {expanded ? 'Hide details ▲' : 'View details ▼'}
                     </button>
                     {!isPast && (
-                        <button style={{ padding: '6px 14px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#dc2626', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                            Cancel
+                        <button 
+                            disabled={isCancelling}
+                            onClick={async () => {
+                                if (onCancel) {
+                                    setIsCancelling(true);
+                                    await onCancel(appt.id);
+                                    setIsCancelling(false);
+                                }
+                            }}
+                            style={{ padding: '6px 14px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600, color: '#dc2626', cursor: isCancelling ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif', opacity: isCancelling ? 0.6 : 1 }}>
+                            {isCancelling ? 'Cancelling...' : 'Cancel'}
                         </button>
                     )}
                 </div>
@@ -177,7 +150,15 @@ function AppointmentCard({ appt }) {
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden', borderTop: '1px solid var(--border)', background: '#f8fffe' }}>
                         <div style={{ padding: '16px 20px' }}>
                             <p style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Reported Condition</p>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.65, fontStyle: 'italic' }}>"{appt.condition}"</p>
+                            <p style={{ fontSize: '0.875rem', color: isPast ? '#bbb' : 'var(--text-secondary)', lineHeight: 1.65 }}>"{appt.condition}"</p>
+                            {appt.paymentMethod && (
+                                <>
+                                    <p style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '12px 0 8px 0' }}>Payment</p>
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                        {appt.paymentMethod === 'UPI' ? '📱 Pay Now via UPI' : '🏥 Pay at Hospital'} — {appt.paymentStatus === 'PAID' ? '✓ Paid' : 'Pending'}
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -187,10 +168,77 @@ function AppointmentCard({ appt }) {
 }
 
 export default function AppointmentsPage() {
-    const upcoming = DEMO_APPOINTMENTS.filter(a => a.status === 'upcoming');
-    const completed = DEMO_APPOINTMENTS.filter(a => a.status === 'completed');
+    const [appointments, setAppointments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Fetch appointments on mount
+    useEffect(() => {
+        const fetchAppointments = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                console.log('📋 Fetching patient appointments...');
+                const response = await getMyAppointments();
+
+                console.log('✅ API Response:', response);
+
+                if (!response.data || !Array.isArray(response.data)) {
+                    throw new Error('Invalid response format from API - expected array');
+                }
+
+                // Convert date strings to Date objects for countdown
+                const convertedAppointments = response.data.map(apt => {
+                    const datePart = apt.date.split('T')[0];
+                    return {
+                        ...apt,
+                        date: new Date(`${datePart}T${apt.slot || '00:00'}:00`), // Combine date string + slot time correctly
+                    };
+                });
+
+                console.log('📊 Converted appointments:', convertedAppointments);
+
+                // Sort appointments: booked/confirmed first, then completed/cancelled
+                // Within each group, sort by date ascending
+                const statusOrder = { 'booked': 0, 'confirmed': 1, 'completed': 2, 'cancelled': 3 };
+                const sortedAppointments = convertedAppointments.sort((a, b) => {
+                    const statusDiff = (statusOrder[a.status] ?? 999) - (statusOrder[b.status] ?? 999);
+                    if (statusDiff !== 0) return statusDiff;
+                    return new Date(a.date) - new Date(b.date);
+                });
+
+                console.log('✨ Sorted appointments:', sortedAppointments);
+                setAppointments(sortedAppointments);
+                setLoading(false);
+            } catch (err) {
+                console.error('❌ Error fetching appointments:', err);
+                setError(err.message || 'Failed to load appointments');
+                setLoading(false);
+            }
+        };
+
+        fetchAppointments();
+    }, []);
+
+    const handleCancelAppointment = async (id) => {
+        try {
+            await cancelAppointmentAPI(id);
+            setAppointments(prev => prev.map(a => 
+                a.id === id ? { ...a, status: 'cancelled' } : a
+            ));
+        } catch (err) {
+            console.error('Failed to cancel appointment:', err);
+            setError(err.message || 'Failed to cancel appointment. Please try again.');
+            setTimeout(() => setError(null), 5000); // Clear error after 5s
+        }
+    };
+
+    // Split appointments into upcoming and past
+    const upcoming = appointments.filter(a => a.status === 'booked' || a.status === 'confirmed');
+    const past = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
+
     const urgentAlert = upcoming.find(a => {
-        // eslint-disable-next-line react-hooks/purity
         const diff = a.date - Date.now();
         return diff > 0 && diff < 86_400_000;
     });
@@ -208,34 +256,63 @@ export default function AppointmentsPage() {
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Manage your upcoming tokens and appointment history.</p>
                 </motion.div>
 
+                {/* ── Loading State ────────────────────────── */}
+                {loading && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '40px 20px' }}>
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} style={{ width: 40, height: 40, border: '3px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 16px' }} />
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading your appointments...</p>
+                    </motion.div>
+                )}
+
+                {/* ── Error State ────────────────────────── */}
+                {error && !loading && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '12px', marginBottom: '24px' }}>
+                        <p style={{ color: '#dc2626', fontWeight: 600, margin: 0, fontSize: '0.875rem' }}>⚠️ {error}</p>
+                    </motion.div>
+                )}
+
+                {/* ── Empty State ────────────────────────── */}
+                {!loading && appointments.length === 0 && !error && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '40px 20px' }}>
+                        <p style={{ fontSize: '2rem', marginBottom: '12px' }}>📅</p>
+                        <h2 style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>No appointments yet</h2>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>Book your first appointment with a doctor</p>
+                        <Link to="/patient/dashboard" style={{ display: 'inline-block', padding: '10px 24px', background: 'var(--accent)', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem' }}>
+                            + Book Appointment
+                        </Link>
+                    </motion.div>
+                )}
+
                 {/* ── Reminder banners ──────────────────────── */}
-                {urgentAlert && <AlertBanner appointment={urgentAlert} />}
+                {!loading && urgentAlert && <AlertBanner appointment={urgentAlert} />}
 
                 {/* ── Upcoming ─────────────────────────────── */}
-                <div style={{ marginBottom: '40px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            Upcoming <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({upcoming.length})</span>
-                        </h2>
-                        <Link to="/patient/dashboard" style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 600, textDecoration: 'none' }}>+ Book new →</Link>
+                {!loading && upcoming.length > 0 && (
+                    <div style={{ marginBottom: '40px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                Upcoming <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({upcoming.length})</span>
+                            </h2>
+                            <Link to="/patient/dashboard" style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 600, textDecoration: 'none' }}>+ Book new →</Link>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {upcoming.map((appt, i) => (
+                                <motion.div key={appt.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
+                                    <AppointmentCard appt={appt} onCancel={handleCancelAppointment} />
+                                </motion.div>
+                            ))}
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                        {upcoming.map((appt, i) => (
-                            <motion.div key={appt.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-                                <AppointmentCard appt={appt} />
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
+                )}
 
-                {/* ── Completed ────────────────────────────── */}
-                {completed.length > 0 && (
+                {/* ── Past Appointments ────────────────────────── */}
+                {!loading && past.length > 0 && (
                     <div>
                         <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                            Past appointments <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({completed.length})</span>
+                            Past appointments <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({past.length})</span>
                         </h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            {completed.map((appt, i) => (
+                            {past.map((appt, i) => (
                                 <motion.div key={appt.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
                                     <AppointmentCard appt={appt} />
                                 </motion.div>

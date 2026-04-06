@@ -23,6 +23,7 @@ export const hospitalSchema = z.object({
 export const doctorSchema = z.object({
     name: z.string().min(2, 'Doctor name is required'),
     specialty: z.string().min(1, 'Specialty is required'),
+    fee: z.string().regex(/^\d+$/, 'Fee must be a valid number').min(1, 'Fee is required'),
 });
 
 export const patientSchema = z.object({

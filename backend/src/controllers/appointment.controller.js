@@ -225,4 +225,123 @@ const getTokenCard = catchAsync(async (req, res, next) => {
     });
 });
 
-module.exports = { bookAppointment, getTokenCard };
+// ─── Get Patient's Appointments ──────────────────────────────
+// Fetches all appointments for the logged-in patient
+// Requires JWT authentication to extract patient_id
+const getMyAppointments = catchAsync(async (req, res, next) => {
+    // Get patient_id from JWT (set by auth middleware)
+    const patientId = req.user?.id;
+
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    console.log(`📋 Fetching appointments for patient_id: ${patientId}`);
+
+    // Fetch all appointments for this patient with doctor details
+    const appointments = await prisma.appointment.findMany({
+        where: {
+            patient_id: parseInt(patientId, 10),
+        },
+        include: {
+            doctor: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    specialization: true,
+                    hospital: {
+                        select: {
+                            hospital_name: true,
+                            id: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: [
+            { status: 'asc' }, // BOOKED/CONFIRMED first, then CANCELLED, COMPLETED
+            { date: 'asc' }, // Within each status group, sort by date ascending
+        ],
+    });
+
+    console.log(`✅ Found ${appointments.length} appointments for patient ${patientId}:`, appointments);
+
+    // Post-process to ensure correct ordering:
+    // Status order: BOOKED → CONFIRMED → COMPLETED → CANCELLED
+    const statusOrder = { 'BOOKED': 0, 'CONFIRMED': 1, 'COMPLETED': 2, 'CANCELLED': 3 };
+    const sortedAppointments = appointments.sort((a, b) => {
+        const statusDiff = (statusOrder[a.status] ?? 999) - (statusOrder[b.status] ?? 999);
+        if (statusDiff !== 0) return statusDiff;
+        // Within same status, sort by date ascending
+        return new Date(a.date) - new Date(b.date);
+    });
+
+    // Map appointments to frontend-friendly format
+    const formattedAppointments = sortedAppointments.map(apt => ({
+        id: apt.id,
+        token: apt.token_number,
+        doctor: apt.doctor.full_name,
+        specialty: apt.doctor.specialization,
+        hospital: apt.doctor.hospital.hospital_name,
+        date: apt.date,
+        slot: apt.slot,
+        condition: apt.problem_description,
+        fee: 1200, // TODO: Add fee to schema if needed
+        status: apt.status.toLowerCase(), // Convert to lowercase: 'booked' → 'upcoming', 'completed', 'cancelled'
+        paymentMethod: apt.paymentMethod,
+        paymentStatus: apt.paymentStatus,
+    }));
+
+    res.status(200).json({
+        status: "success",
+        results: formattedAppointments.length,
+        data: formattedAppointments,
+    });
+});
+
+// ─── Cancel Appointment ──────────────────────────────────────────
+// CANCEL /api/v1/appointments/:id/cancel
+const cancelAppointment = catchAsync(async (req, res, next) => {
+    const appointmentId = parseInt(req.params.id, 10);
+    const patientId = req.user?.id;
+
+    if (isNaN(appointmentId)) {
+        return next(new AppError("Invalid appointment ID", 400));
+    }
+
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+    });
+
+    if (!appointment) {
+        return next(new AppError("Appointment not found", 404));
+    }
+
+    if (appointment.patient_id !== parseInt(patientId, 10)) {
+        return next(new AppError("You do not have permission to cancel this appointment", 403));
+    }
+
+    if (appointment.status !== 'BOOKED' && appointment.status !== 'CONFIRMED') {
+        return next(new AppError("Only upcoming appointments can be cancelled.", 400));
+    }
+
+    await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { status: 'CANCELLED' },
+    });
+
+    await prisma.reminder.deleteMany({
+        where: { appointment_id: appointmentId, sent: false }
+    });
+
+    res.status(200).json({
+        status: "success",
+        message: "Appointment cancelled successfully"
+    });
+});
+
+module.exports = { bookAppointment, getTokenCard, getMyAppointments, cancelAppointment };

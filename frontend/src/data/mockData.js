@@ -411,7 +411,11 @@ export const doctors = [
 
 /* ── Utility helpers ────────────────────────────────────────── */
 export function getHospitalById(id) { return hospitals.find(h => h.id === id); }
-export function getDoctorById(id) { return doctors.find(d => d.id === id); }
+export function getDoctorById(id) { 
+    // Handle both slug-based IDs (e.g., 'dr-rahul-sharma') and numeric IDs (e.g., '1' or 1)
+    const numericId = parseInt(id, 10);
+    return doctors.find(d => d.id === id || d.numeric_id === numericId);
+}
 export function getDoctorsForHospital(hospitalId) { return doctors.filter(d => d.hospitalId === hospitalId); }
 export function getHospitalsByState(state) { return state ? hospitals.filter(h => h.state === state) : hospitals; }
 export function getDoctorsByFilters(state, specialty) {
