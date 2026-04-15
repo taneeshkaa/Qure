@@ -14,6 +14,7 @@ const patientRoutes = require("./patient.routes");
 const searchRoutes = require("./search.routes");
 const availabilityRoutes = require("./availability.routes");
 const appointmentRoutes = require("./appointment.routes");
+const hospitalsRoutes = require("./hospitals.routes");
 
 // Phase 3 routes
 const doctorRoutes = require("./doctor.routes");
@@ -31,6 +32,7 @@ router.use("/patient", patientRoutes);
 router.use("/search", searchRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/appointments", appointmentRoutes);
+router.use("/hospitals", hospitalsRoutes);
 
 // ─── Phase 3: Doctor Consultation & Chemist ──────────────────
 router.use("/doctor", doctorRoutes);

@@ -5,6 +5,7 @@
 const prisma = require("../config/db");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/AppError");
+const { recordLastAction } = require("../services/patientDashboard.service");
 
 // ─── Book Appointment ────────────────────────────────────────
 const bookAppointment = catchAsync(async (req, res, next) => {
@@ -115,6 +116,9 @@ const bookAppointment = catchAsync(async (req, res, next) => {
                 },
             },
         });
+
+        // Best-effort "Continue where you left" signal
+        await recordLastAction(parseInt(patient_id, 10), "Booked an appointment");
     } catch (err) {
         // Handle double-booking: unique constraint on (doctor_id, date, slot)
         if (err.code === "P2002") {

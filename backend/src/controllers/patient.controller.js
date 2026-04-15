@@ -6,6 +6,12 @@
 const prisma = require("../config/db");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/AppError");
+const { recordLastAction } = require("../services/patientDashboard.service");
+
+const getFirstName = (fullName) => {
+    if (!fullName || typeof fullName !== "string") return "";
+    return fullName.trim().split(/\s+/)[0] || "";
+};
 
 const registerPatient = catchAsync(async (req, res, next) => {
     const {
@@ -239,6 +245,526 @@ const uploadAttachment = catchAsync(async (req, res, next) => {
         message: "File uploaded successfully",
         data: { attachment },
     });
+
+    await recordLastAction(parseInt(req.user?.id || "0", 10), "Uploaded a medical record");
 });
 
-module.exports = { registerPatient, loginPatient, uploadAttachment };
+// ─── Get Logged-in Patient Profile ───────────────────────────
+// GET /api/v1/patient/profile
+// Requires patient JWT via protect middleware
+const getPatientProfile = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const patient = await prisma.patient.findUnique({
+        where: { id: parseInt(patientId, 10) },
+        include: {
+            medicalProfile: {
+                select: {
+                    emergency_name: true,
+                    emergency_phone: true,
+                    allergies: true,
+                    medications: true,
+                    notes: true,
+                },
+            },
+        },
+    });
+
+    if (!patient) {
+        return next(new AppError("Patient not found", 404));
+    }
+
+    res.status(200).json({
+        status: "success",
+        data: {
+            patient_id: patient.id,
+            full_name: patient.full_name,
+            first_name: getFirstName(patient.full_name),
+            email: patient.email,
+            phone: patient.phone,
+            age: patient.age,
+            gender: patient.gender,
+            address: patient.address,
+            blood_group: patient.blood_group,
+            medical_profile: {
+                emergency_contact: patient.medicalProfile?.emergency_name || null,
+                emergency_phone: patient.medicalProfile?.emergency_phone || null,
+                allergies: patient.medicalProfile?.allergies || null,
+                medications: patient.medicalProfile?.medications || null,
+                notes: patient.medicalProfile?.notes || null,
+            },
+        },
+    });
+});
+
+// ─── Live Queue Tracker Upgrade ───────────────────────────────
+// GET /api/v1/patient/queue/active
+// Returns active token with queue position, estimated wait, and delay flags.
+const getActiveQueueToken = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appointment = await prisma.appointment.findFirst({
+        where: {
+            patient_id: parseInt(patientId, 10),
+            date: { gte: today, lt: tomorrow },
+            status: { in: ["BOOKED", "CONFIRMED"] },
+        },
+        include: {
+            doctor: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    specialization: true,
+                    hospital: {
+                        select: { id: true, hospital_name: true },
+                    },
+                },
+            },
+        },
+        orderBy: [{ date: "asc" }, { token_number: "asc" }],
+    });
+
+    if (!appointment) {
+        return res.status(200).json({
+            status: "success",
+            has_active_token: false,
+            data: null,
+        });
+    }
+
+    const patientsAhead = await prisma.appointment.count({
+        where: {
+            doctor_id: appointment.doctor_id,
+            date: appointment.date,
+            status: { in: ["BOOKED", "CONFIRMED"] },
+            token_number: { lt: appointment.token_number },
+        },
+    });
+
+    const dayOfWeek = new Date(appointment.date).getDay();
+    const doctorSchedule = await prisma.doctorSlot.findUnique({
+        where: {
+            unique_doctor_day: {
+                doctor_id: appointment.doctor_id,
+                day_of_week: dayOfWeek,
+            },
+        },
+        select: { slot_duration_minutes: true },
+    });
+
+    const avgConsultMinutes = doctorSchedule?.slot_duration_minutes || 15;
+    const queueEstimateMinutes = patientsAhead * avgConsultMinutes;
+
+    // Combine scheduled slot time to produce a clock-based lower bound (same as /active-token)
+    const appointmentDateTime = new Date(appointment.date);
+    const [hours, minutes] = String(appointment.slot || "").split(":").map(Number);
+    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+        appointmentDateTime.setHours(hours, minutes, 0, 0);
+    }
+    const clockEstimateMinutes = Math.max(
+        0,
+        Math.ceil((appointmentDateTime.getTime() - Date.now()) / 60000)
+    );
+
+    const delayMinutes = appointment.delayMinutes || 0;
+    const estimatedWaitMinutes = Math.max(queueEstimateMinutes, clockEstimateMinutes) + delayMinutes;
+
+    // Optional persist (best-effort) so dashboards can show last computed estimate.
+    if (appointment.estimatedWaitMinutes !== estimatedWaitMinutes) {
+        await prisma.appointment.update({
+            where: { id: appointment.id },
+            data: { estimatedWaitMinutes },
+        });
+    }
+
+    res.status(200).json({
+        status: "success",
+        has_active_token: true,
+        data: {
+            appointment_id: appointment.id,
+            token_number: appointment.token_number,
+            doctor: {
+                id: appointment.doctor.id,
+                name: appointment.doctor.full_name,
+                specialty: appointment.doctor.specialization,
+            },
+            hospital: {
+                id: appointment.doctor.hospital.id,
+                name: appointment.doctor.hospital.hospital_name,
+            },
+            date: appointment.date,
+            slot: appointment.slot,
+            status: appointment.status,
+            position_in_queue: patientsAhead + 1,
+            patients_ahead: patientsAhead,
+            avg_consult_minutes: avgConsultMinutes,
+            estimated_wait_minutes: estimatedWaitMinutes,
+            delay_minutes: delayMinutes,
+            doctor_delay_reason: appointment.doctorDelayReason || null,
+        },
+    });
+});
+
+// ─── Medical Timeline ─────────────────────────────────────────
+// GET /api/v1/patient/timeline
+const getPatientTimeline = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const visits = await prisma.appointment.findMany({
+        where: {
+            patient_id: parseInt(patientId, 10),
+            status: "COMPLETED",
+        },
+        include: {
+            doctor: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    specialization: true,
+                    hospital: { select: { id: true, hospital_name: true } },
+                },
+            },
+            prescription: {
+                select: {
+                    id: true,
+                    content: true,
+                    status: true,
+                    createdAt: true,
+                },
+            },
+        },
+        orderBy: [{ date: "desc" }, { token_number: "desc" }],
+    });
+
+    const data = visits.map((v) => ({
+        id: v.id,
+        date: v.date,
+        slot: v.slot,
+        token_number: v.token_number,
+        doctor: {
+            id: v.doctor.id,
+            name: v.doctor.full_name,
+            specialty: v.doctor.specialization,
+        },
+        hospital: {
+            id: v.doctor.hospital.id,
+            name: v.doctor.hospital.hospital_name,
+        },
+        diagnosis: v.diagnosis || null,
+        notes: v.notes || null,
+        prescription: v.prescription
+            ? {
+                id: v.prescription.id,
+                content: v.prescription.content,
+                status: v.prescription.status,
+                createdAt: v.prescription.createdAt,
+            }
+            : null,
+    }));
+
+    res.status(200).json({
+        status: "success",
+        results: data.length,
+        data,
+    });
+});
+
+// ─── Health Profile Summary ───────────────────────────────────
+// GET /api/v1/patient/health-profile
+const getHealthProfile = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const patient = await prisma.patient.findUnique({
+        where: { id: parseInt(patientId, 10) },
+        select: {
+            id: true,
+            blood_group: true,
+            allergies: true,
+            chronic_conditions: true,
+        },
+    });
+
+    if (!patient) return next(new AppError("Patient not found", 404));
+
+    res.status(200).json({
+        status: "success",
+        data: {
+            bloodGroup: patient.blood_group || null,
+            allergies: patient.allergies || [],
+            chronicConditions: patient.chronic_conditions || [],
+        },
+    });
+});
+
+// PUT /api/v1/patient/health-profile
+const updateHealthProfile = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const { bloodGroup, allergies, chronicConditions } = req.body || {};
+
+    const updated = await prisma.patient.update({
+        where: { id: parseInt(patientId, 10) },
+        data: {
+            blood_group: typeof bloodGroup === "string" ? bloodGroup.trim() : undefined,
+            allergies: Array.isArray(allergies)
+                ? allergies.map((s) => String(s).trim()).filter(Boolean)
+                : undefined,
+            chronic_conditions: Array.isArray(chronicConditions)
+                ? chronicConditions.map((s) => String(s).trim()).filter(Boolean)
+                : undefined,
+        },
+        select: {
+            blood_group: true,
+            allergies: true,
+            chronic_conditions: true,
+        },
+    });
+
+    res.status(200).json({
+        status: "success",
+        message: "Health profile updated successfully",
+        data: {
+            bloodGroup: updated.blood_group || null,
+            allergies: updated.allergies || [],
+            chronicConditions: updated.chronic_conditions || [],
+        },
+    });
+
+    await recordLastAction(parseInt(patientId, 10), "Updated health profile");
+});
+
+// ─── Medication Reminders ─────────────────────────────────────
+// GET /api/v1/patient/reminders
+const getMedicationReminders = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const reminders = await prisma.medicationReminder.findMany({
+        where: { patientId: parseInt(patientId, 10) },
+        orderBy: { createdAt: "desc" },
+    });
+
+    res.status(200).json({
+        status: "success",
+        results: reminders.length,
+        data: reminders,
+    });
+});
+
+// POST /api/v1/patient/reminders
+const createMedicationReminder = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const { medicineName, dosage, frequency, startDate, endDate } = req.body || {};
+
+    if (!medicineName || !dosage || !frequency || !startDate) {
+        return next(new AppError("medicineName, dosage, frequency, and startDate are required", 400));
+    }
+
+    const created = await prisma.medicationReminder.create({
+        data: {
+            patientId: parseInt(patientId, 10),
+            medicineName: String(medicineName).trim(),
+            dosage: String(dosage).trim(),
+            frequency: String(frequency).trim(),
+            startDate: new Date(startDate),
+            endDate: endDate ? new Date(endDate) : null,
+            active: true,
+        },
+    });
+
+    res.status(201).json({
+        status: "success",
+        message: "Medication reminder created",
+        data: created,
+    });
+
+    await recordLastAction(parseInt(patientId, 10), "Added a medication reminder");
+});
+
+// PATCH /api/v1/patient/reminders/:id
+// Toggles active status (or sets explicitly if provided)
+const toggleMedicationReminder = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const { id } = req.params;
+    const { active } = req.body || {};
+
+    const reminder = await prisma.medicationReminder.findUnique({
+        where: { id },
+    });
+
+    if (!reminder) return next(new AppError("Reminder not found", 404));
+    if (reminder.patientId !== parseInt(patientId, 10)) {
+        return next(new AppError("You do not have permission to update this reminder", 403));
+    }
+
+    const nextActive = typeof active === "boolean" ? active : !reminder.active;
+    const updated = await prisma.medicationReminder.update({
+        where: { id },
+        data: { active: nextActive },
+    });
+
+    res.status(200).json({
+        status: "success",
+        message: "Medication reminder updated",
+        data: updated,
+    });
+
+    await recordLastAction(parseInt(patientId, 10), nextActive ? "Activated a medication reminder" : "Marked a medication reminder inactive");
+});
+
+// ─── Get Current Active Token For Patient ────────────────────
+// GET /api/v1/patient/active-token
+// Returns the patient's current-day active appointment token if present.
+const getActiveToken = catchAsync(async (req, res, next) => {
+    const patientId = req.user?.id;
+
+    if (!patientId) {
+        return next(new AppError("Unauthorized: Patient ID not found in token", 401));
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appointment = await prisma.appointment.findFirst({
+        where: {
+            patient_id: parseInt(patientId, 10),
+            date: {
+                gte: today,
+                lt: tomorrow,
+            },
+            status: {
+                in: ["BOOKED", "CONFIRMED"],
+            },
+        },
+        include: {
+            doctor: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    specialization: true,
+                    hospital: {
+                        select: {
+                            id: true,
+                            hospital_name: true,
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: [{ date: "asc" }, { token_number: "asc" }],
+    });
+
+    if (!appointment) {
+        return res.status(200).json({
+            status: "success",
+            has_active_token: false,
+            data: null,
+        });
+    }
+
+    const patientsAhead = await prisma.appointment.count({
+        where: {
+            doctor_id: appointment.doctor_id,
+            date: appointment.date,
+            status: {
+                in: ["BOOKED", "CONFIRMED"],
+            },
+            token_number: {
+                lt: appointment.token_number,
+            },
+        },
+    });
+
+    const appointmentDateTime = new Date(appointment.date);
+    const [hours, minutes] = String(appointment.slot || "").split(":").map(Number);
+    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+        appointmentDateTime.setHours(hours, minutes, 0, 0);
+    }
+
+    const dayOfWeek = new Date(appointment.date).getDay();
+    const doctorSchedule = await prisma.doctorSlot.findUnique({
+        where: {
+            unique_doctor_day: {
+                doctor_id: appointment.doctor_id,
+                day_of_week: dayOfWeek,
+            },
+        },
+        select: {
+            slot_duration_minutes: true,
+        },
+    });
+
+    const slotDuration = doctorSchedule?.slot_duration_minutes || 15;
+    const queueEstimateMinutes = patientsAhead * slotDuration;
+    const clockEstimateMinutes = Math.max(
+        0,
+        Math.ceil((appointmentDateTime.getTime() - Date.now()) / 60000)
+    );
+    const waitTimeMinutes = Math.max(queueEstimateMinutes, clockEstimateMinutes);
+
+    res.status(200).json({
+        status: "success",
+        has_active_token: true,
+        data: {
+            appointment_id: appointment.id,
+            token_number: appointment.token_number,
+            doctor_name: appointment.doctor.full_name,
+            specialty: appointment.doctor.specialization,
+            hospital_name: appointment.doctor.hospital.hospital_name,
+            date: appointment.date,
+            slot: appointment.slot,
+            status: appointment.status,
+            patients_ahead: patientsAhead,
+            wait_time_minutes: waitTimeMinutes,
+        },
+    });
+});
+
+module.exports = {
+    registerPatient,
+    loginPatient,
+    uploadAttachment,
+    getPatientProfile,
+    getActiveQueueToken,
+    getPatientTimeline,
+    getHealthProfile,
+    updateHealthProfile,
+    getMedicationReminders,
+    createMedicationReminder,
+    toggleMedicationReminder,
+    getActiveToken,
+};

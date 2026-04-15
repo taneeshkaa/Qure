@@ -1,18 +1,24 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
-import { detectSpecialty, smartSearch } from '../../data/searchData';
+import { motion, AnimatePresence } from 'framer-motion';
+import api from '../../api/axios';
 import SparkleCanvas from '../../components/SparkleCanvas';
-
-/* ─────────────────────────────────────────────
-   Helpers
-───────────────────────────────────────────── */
-function getGreeting() {
-    const h = new Date().getHours();
-    if (h < 12) return { text: 'Good morning', emoji: '☀️' };
-    if (h < 17) return { text: 'Good afternoon', emoji: '🌤️' };
-    return { text: 'Good evening', emoji: '🌙' };
-}
+import {
+    getPatientTimeline,
+    getHealthProfile,
+    updateHealthProfile,
+    getMedicationReminders,
+    createMedicationReminder,
+    patchMedicationReminder,
+} from '../../api/patient';
+import { useDashboardData } from '../../hooks/useDashboardData';
+import LiveStatusCard from '../../components/dashboard/LiveStatusCard';
+import StatsRow from '../../components/dashboard/StatsRow';
+import Recommendations from '../../components/dashboard/Recommendations';
+import ActivityFeed from '../../components/dashboard/ActivityFeed';
+import NearbyHospitals from '../../components/dashboard/NearbyHospitals';
+import VisitChart from '../../components/dashboard/VisitChart';
+import ResumeCard from '../../components/dashboard/ResumeCard';
 
 /* ─────────────────────────────────────────────
    Animated counter
@@ -77,13 +83,21 @@ const NAV_ITEMS = [
     { label: 'Doctors', to: '/doctors', icon: '✿' },
 ];
 
-function PatientNav({ active = '' }) {
+function PatientNav({ active = '', patientName = '' }) {
     const [scrolled, setScrolled] = useState(false);
     useEffect(() => {
         const fn = () => setScrolled(window.scrollY > 12);
         window.addEventListener('scroll', fn, { passive: true });
         return () => window.removeEventListener('scroll', fn);
     }, []);
+
+    const avatarInitials = patientName
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0]?.toUpperCase() || '')
+        .join('') || '?';
 
     return (
         <motion.header
@@ -143,9 +157,9 @@ function PatientNav({ active = '' }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '0.9rem', fontWeight: 800, color: 'white',
                     boxShadow: '0 2px 10px rgba(11,158,135,0.35)',
-                }}>P</div>
+                }}>{avatarInitials}</div>
                 <div>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>Patient</p>
+                    <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>{patientName || 'Patient'}</p>
                     <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>My Account</p>
                 </div>
             </motion.div>
@@ -226,545 +240,1073 @@ const TRUST = [
     { label: '24/7 Support', icon: '🕐' },
 ];
 
+const formatSlotTime = (slot) => {
+    const [hours, minutes] = String(slot || '').split(':').map(Number);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return slot || 'Time TBD';
+    }
+
+    const dt = new Date();
+    dt.setHours(hours, minutes, 0, 0);
+    return dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatAppointmentDate = (dateValue, slot) => {
+    const parsed = new Date(dateValue);
+    if (Number.isNaN(parsed.getTime())) {
+        return slot ? formatSlotTime(slot) : 'Date TBD';
+    }
+
+    const dateText = parsed.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+
+    return slot ? `${dateText}, ${formatSlotTime(slot)}` : dateText;
+};
+
+const formatAppointmentStatus = (status) => {
+    const raw = String(status || '').toLowerCase();
+    if (raw === 'booked') return 'Booked';
+    if (raw === 'confirmed') return 'Confirmed';
+    if (raw === 'completed') return 'Completed';
+    if (raw === 'cancelled') return 'Cancelled';
+    return raw ? `${raw[0].toUpperCase()}${raw.slice(1)}` : 'Pending';
+};
+
+const getStatusColors = (statusLabel) => {
+    if (statusLabel === 'Booked' || statusLabel === 'Confirmed') {
+        return { background: 'rgba(16,185,129,0.12)', color: '#0b9e87' };
+    }
+    if (statusLabel === 'Completed') {
+        return { background: 'rgba(14,165,233,0.12)', color: '#0284c7' };
+    }
+    if (statusLabel === 'Cancelled') {
+        return { background: 'rgba(239,68,68,0.12)', color: '#dc2626' };
+    }
+    return { background: 'rgba(245,158,11,0.12)', color: '#d97706' };
+};
+
+const formatWaitTime = (minutes) => {
+    const value = Number(minutes);
+    if (Number.isNaN(value) || value <= 0) return 'Now';
+    if (value < 60) return `${value} mins`;
+
+    const hours = Math.floor(value / 60);
+    const remainingMinutes = value % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+};
+
 /* ─────────────────────────────────────────────
    Main Dashboard
 ───────────────────────────────────────────── */
 export default function PatientDashboard() {
-    const [query, setQuery] = useState('');
-    const [isFocused, setFocused] = useState(false);
     const navigate = useNavigate();
-    const inputRef = useRef(null);
-    const greeting = getGreeting();
+    const dashboard = useDashboardData({ statusPollMs: 30_000 });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isFocused, setFocused] = useState(false);
+    const [profile, setProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(true);
+    const [profileError, setProfileError] = useState('');
+    const [appointments, setAppointments] = useState([]);
+    const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+    const [appointmentsError, setAppointmentsError] = useState('');
 
-    const detection = useMemo(() => {
-        if (query.trim().length >= 2) return detectSpecialty(query);
-        return null;
-    }, [query]);
+    const [timeline, setTimeline] = useState([]);
+    const [timelineLoading, setTimelineLoading] = useState(true);
+    const [timelineError, setTimelineError] = useState('');
 
-    const preview = useMemo(() => {
-        if (query.trim().length >= 2) {
-            const { doctors: d, hospitals: h } = smartSearch(query);
-            return [...d.slice(0, 3), ...h.slice(0, 2)];
+    const [healthProfile, setHealthProfile] = useState(null);
+    const [healthProfileLoading, setHealthProfileLoading] = useState(true);
+    const [healthProfileError, setHealthProfileError] = useState('');
+    const [healthEdit, setHealthEdit] = useState(false);
+    const [healthDraft, setHealthDraft] = useState({ bloodGroup: '', allergies: '', chronicConditions: '' });
+    const [healthSaving, setHealthSaving] = useState(false);
+
+    const [reminders, setReminders] = useState([]);
+    const [remindersLoading, setRemindersLoading] = useState(true);
+    const [remindersError, setRemindersError] = useState('');
+    const [addReminderOpen, setAddReminderOpen] = useState(false);
+    const [addReminderDraft, setAddReminderDraft] = useState({
+        medicineName: '',
+        dosage: '',
+        frequencyType: 'DAILY',
+        time1: '09:00',
+        time2: '21:00',
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: '',
+    });
+    const [addReminderSaving, setAddReminderSaving] = useState(false);
+
+    const fetchPatientProfile = useCallback(async () => {
+        setProfileLoading(true);
+        setProfileError('');
+
+        try {
+            const response = await api.get('/patient/profile');
+            setProfile(response?.data || null);
+        } catch (error) {
+            setProfileError(error.message || 'Unable to load your profile right now.');
+            setProfile(null);
+        } finally {
+            setProfileLoading(false);
         }
-        return [];
-    }, [query]);
+    }, []);
 
-    const doSearch = () => {
-        if (query.trim().length >= 2)
-            navigate(`/patient/search?q=${encodeURIComponent(query.trim())}`);
-    };
+    const prettyApiError = useCallback((msg) => {
+        const text = String(msg || '');
+        if (!text) return 'Something went wrong.';
+        if (text.startsWith('Cannot find /api/')) {
+            return 'Backend endpoint not reachable. Restart the backend server so it loads the latest routes.';
+        }
+        if (text.includes('Network Error')) {
+            return 'Cannot reach the backend. Make sure the backend is running on port 5000.';
+        }
+        return text;
+    }, []);
+
+    const fetchTimeline = useCallback(async () => {
+        setTimelineLoading(true);
+        setTimelineError('');
+        try {
+            const response = await getPatientTimeline();
+            setTimeline(Array.isArray(response?.data) ? response.data : []);
+        } catch (error) {
+            setTimelineError(prettyApiError(error.message) || 'Unable to load your medical timeline right now.');
+            setTimeline([]);
+        } finally {
+            setTimelineLoading(false);
+        }
+    }, [prettyApiError]);
+
+    const fetchHealthProfile = useCallback(async () => {
+        setHealthProfileLoading(true);
+        setHealthProfileError('');
+        try {
+            const response = await getHealthProfile();
+            const data = response?.data || null;
+            setHealthProfile(data);
+            setHealthDraft({
+                bloodGroup: data?.bloodGroup || '',
+                allergies: Array.isArray(data?.allergies) ? data.allergies.join(', ') : '',
+                chronicConditions: Array.isArray(data?.chronicConditions) ? data.chronicConditions.join(', ') : '',
+            });
+        } catch (error) {
+            setHealthProfileError(prettyApiError(error.message) || 'Unable to load your health profile right now.');
+            // allow UI to still be editable with defaults
+            setHealthProfile((prev) => prev || { bloodGroup: profile?.blood_group || '', allergies: [], chronicConditions: [] });
+        } finally {
+            setHealthProfileLoading(false);
+        }
+    }, [prettyApiError, profile?.blood_group]);
+
+    const fetchReminders = useCallback(async () => {
+        setRemindersLoading(true);
+        setRemindersError('');
+        try {
+            const response = await getMedicationReminders();
+            setReminders(Array.isArray(response?.data) ? response.data : []);
+        } catch (error) {
+            setRemindersError(prettyApiError(error.message) || 'Unable to load medication reminders right now.');
+            setReminders([]);
+        } finally {
+            setRemindersLoading(false);
+        }
+    }, [prettyApiError]);
+
+    const submitSearch = useCallback(() => {
+        const q = searchQuery.trim();
+        if (!q) return;
+        navigate(`/patient/search?q=${encodeURIComponent(q)}`);
+    }, [navigate, searchQuery]);
+
+    const fetchAppointments = useCallback(async () => {
+        setAppointmentsLoading(true);
+        setAppointmentsError('');
+
+        try {
+            const response = await api.get('/appointments/my');
+            const appointmentList = Array.isArray(response?.data) ? response.data : [];
+            setAppointments(appointmentList);
+        } catch (error) {
+            setAppointmentsError(error.message || 'Unable to load appointments right now.');
+            setAppointments([]);
+        } finally {
+            setAppointmentsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPatientProfile();
+    }, [fetchPatientProfile]);
+
+    useEffect(() => {
+        fetchAppointments();
+    }, [fetchAppointments]);
+
+    useEffect(() => {
+        fetchTimeline();
+        fetchHealthProfile();
+        fetchReminders();
+    }, [fetchTimeline, fetchHealthProfile, fetchReminders]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().catch(() => {});
+        }
+    }, []);
+
+    const firstName = useMemo(() => {
+        const name = profile?.first_name || profile?.full_name || '';
+        return name.trim().split(/\s+/)[0] || '';
+    }, [profile]);
+
+    const welcomeHeading = firstName ? `Welcome back, ${firstName}!` : 'Welcome back!';
+    const welcomeText = useMemo(() => welcomeHeading.split(' '), [welcomeHeading]);
+
+    const upcomingAppointments = useMemo(
+        () => {
+            const now = new Date();
+
+            return appointments
+            .filter((apt) => {
+                const status = String(apt.status || '').toLowerCase();
+                if (!['booked', 'confirmed'].includes(status)) return false;
+
+                const datePart = String(apt.date || '').split('T')[0];
+                const slotPart = String(apt.slot || '00:00');
+                const appointmentDateTime = new Date(`${datePart}T${slotPart}:00`);
+
+                if (Number.isNaN(appointmentDateTime.getTime())) return false;
+                return appointmentDateTime > now;
+            })
+            .map(apt => ({
+                id: apt.id,
+                doctor: apt.doctor || 'Doctor not available',
+                date: formatAppointmentDate(apt.date, apt.slot),
+                status: formatAppointmentStatus(apt.status),
+                type: apt.specialty || 'General',
+            }));
+        },
+        [appointments]
+    );
+
+    const completedVisits = useMemo(
+        () => appointments.filter(apt => String(apt.status || '').toLowerCase() === 'completed').length,
+        [appointments]
+    );
+
+    const quickStats = useMemo(
+        () => [
+            { label: 'Upcoming Appts', value: appointments.length },
+            { label: 'Pending Reports', value: 0 },
+            { label: 'Favorite Doctors', value: 0 },
+            { label: 'Total Visits', value: completedVisits },
+        ],
+        [appointments.length, completedVisits]
+    );
+
+    // Medication reminder tick (client-side notifications)
+    useEffect(() => {
+        const parseFrequency = (freqRaw) => {
+            const raw = String(freqRaw || '');
+            const [type, timesRaw] = raw.split('@');
+            const times = (timesRaw || '')
+                .split(',')
+                .map(t => t.trim())
+                .filter(Boolean);
+            return { type: (type || '').trim(), times };
+        };
+
+        const shouldNotifyNow = (rem, now) => {
+            if (!rem?.active) return false;
+            const start = rem.startDate ? new Date(rem.startDate) : null;
+            const end = rem.endDate ? new Date(rem.endDate) : null;
+            if (start && now < start) return false;
+            if (end && now > end) return false;
+
+            const { type, times } = parseFrequency(rem.frequency);
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const key = `${hh}:${mm}`;
+            if (type === 'DAILY') return times.includes(key);
+            if (type === 'TWICE_DAILY') return times.includes(key);
+            return false;
+        };
+
+        const sentKey = (remId, now) => `${remId}:${now.toISOString().slice(0, 16)}`; // per-minute key
+
+        const id = setInterval(() => {
+            if (typeof window === 'undefined' || !('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+            const now = new Date();
+            reminders
+                .filter(r => r?.active)
+                .forEach((rem) => {
+                    if (!shouldNotifyNow(rem, now)) return;
+                    const key = sentKey(rem.id, now);
+                    if (sessionStorage.getItem(key)) return;
+                    sessionStorage.setItem(key, '1');
+                    new Notification('Medication reminder', {
+                        body: `${rem.medicineName} — ${rem.dosage}`,
+                    });
+                });
+        }, 60_000);
+        return () => clearInterval(id);
+    }, [reminders]);
+
+    const quickActions = [
+        { icon: '📅', label: 'Book Appt', desc: 'Find doctors/slots', link: '/patient/search' },
+        { icon: '📁', label: 'Upload Record', desc: 'Add files', link: '#' },
+        { icon: '📄', label: 'History', desc: 'Past visits', link: '#' },
+        { icon: '💊', label: 'Medicines', desc: 'Order now', link: '#' },
+    ];
 
     return (
-        <div style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-            <SparkleCanvas />
+        <div style={{ minHeight: '100vh', position: 'relative', zIndex: 1, color: 'var(--text-primary)' }}>
             <FloatingOrbs />
-
-            {/* Dot grid background */}
-            <div style={{
-                position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-                backgroundImage: 'radial-gradient(circle, rgba(11,158,135,0.07) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-            }} />
-
             <div style={{ position: 'relative', zIndex: 2 }}>
-                <PatientNav active="/patient/dashboard" />
+                <PatientNav active='/patient/dashboard' patientName={profile?.full_name || ''} />
 
-                {/* ── HERO SECTION ─────────────────────────────── */}
-                <section style={{
-                    maxWidth: '900px', margin: '0 auto',
-                    padding: '72px 28px 56px',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    textAlign: 'center',
-                }}>
-                    {/* Badge */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4 }}
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px',
-                            padding: '6px 18px',
-                            background: 'rgba(11,158,135,0.08)',
-                            border: '1px solid rgba(11,158,135,0.2)',
-                            borderRadius: '20px', marginBottom: '28px',
-                        }}
-                    >
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0b9e87', display: 'inline-block', animation: 'pulse 1.4s ease-in-out infinite' }} />
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--accent-dark)' }}>
-                            India's smartest healthcare platform
-                        </span>
-                    </motion.div>
-
-                    {/* Greeting */}
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5, delay: 0.05 }}
-                        style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 500 }}
-                    >
-                        {greeting.text} {greeting.emoji}
-                    </motion.p>
-
-                    {/* Main heading */}
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.55, delay: 0.1 }}
-                        style={{
-                            fontSize: 'clamp(2.25rem,5vw,3.5rem)',
-                            fontWeight: 900,
-                            letterSpacing: '-0.05em',
-                            lineHeight: 1.08,
-                            color: 'var(--text-primary)',
-                            marginBottom: '20px',
-                        }}
-                    >
-                        Your health,{' '}
-                        <span style={{
-                            background: 'linear-gradient(135deg,#0b9e87 0%,#34d9be 60%,#0b9e87 100%)',
-                            backgroundSize: '200% 200%',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                            animation: 'gradientShift 4s ease-in-out infinite',
-                        }}>
-                            on your terms.
-                        </span>
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.18 }}
-                        style={{ fontSize: '1.0625rem', color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '580px', marginBottom: '40px' }}
-                    >
-                        Search by symptom, specialty, doctor name, or hospital — and get a confirmed token in under 5 minutes.
-                    </motion.p>
-
-                    {/* ── SEARCH BAR ─────────────────────────────── */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.25 }}
-                        style={{ position: 'relative', width: '100%', maxWidth: '680px', marginBottom: '20px' }}
-                    >
-                        <div style={{
-                            display: 'flex', alignItems: 'center',
-                            background: 'rgba(255,255,255,0.92)',
-                            backdropFilter: 'blur(12px)',
-                            border: `2px solid ${isFocused ? 'var(--accent)' : 'rgba(214,238,234,0.9)'}`,
-                            borderRadius: '18px', padding: '0 8px 0 18px',
-                            boxShadow: isFocused
-                                ? '0 0 0 5px rgba(11,158,135,0.12), 0 12px 40px rgba(11,158,135,0.14)'
-                                : '0 4px 20px rgba(0,0,0,0.07)',
-                            transition: 'border-color 0.2s, box-shadow 0.2s',
-                        }}>
-                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"
-                                style={{ color: isFocused ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0, transition: 'color 0.2s' }}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-
-                            <input
-                                ref={inputRef}
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                                onFocus={() => setFocused(true)}
-                                onBlur={() => setTimeout(() => setFocused(false), 160)}
-                                onKeyDown={e => e.key === 'Enter' && doSearch()}
-                                placeholder="Type a symptom, doctor name, or hospital..."
-                                style={{
-                                    flex: 1, border: 'none', outline: 'none',
-                                    padding: '18px 12px', fontSize: '1rem',
-                                    color: 'var(--text-primary)', background: 'transparent',
-                                    fontFamily: 'Inter, sans-serif',
-                                }}
-                            />
-
-                            {/* Specialty pill */}
-                            <AnimatePresence>
-                                {detection && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.85 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.85 }}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            padding: '5px 12px',
-                                            background: 'var(--accent-bg)',
-                                            border: '1px solid rgba(11,158,135,0.25)',
-                                            borderRadius: '20px', whiteSpace: 'nowrap', marginRight: '8px',
-                                        }}
+                <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 32px 80px' }}>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                        
+                        {/* Header & Badges */}
+                        <header style={{ marginBottom: 'clamp(24px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '24px' }}>
+                                <div>
+                                    {profileLoading ? (
+                                        <div
+                                            style={{
+                                                width: '320px',
+                                                maxWidth: '100%',
+                                                height: '48px',
+                                                borderRadius: '14px',
+                                                background: 'rgba(11,158,135,0.12)',
+                                                marginBottom: '8px',
+                                            }}
+                                        />
+                                    ) : (
+                                        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                            {welcomeText.map((word, i) => (
+                                                <motion.span
+                                                    key={i}
+                                                    initial={{ opacity: 0, y: 12 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: i * 0.1, duration: 0.5 }}
+                                                >
+                                                    {word}
+                                                </motion.span>
+                                            ))}
+                                        </h1>
+                                    )}
+                                    <motion.p 
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+                                        style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginTop: '10px', marginBottom: 0 }}
                                     >
-                                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', display: 'inline-block', animation: 'pulse 1.2s ease-in-out infinite' }} />
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-dark)' }}>→ {detection.specialty}</span>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                                        Here is what\'s happening with your health today.
+                                    </motion.p>
+                                    {profileError && (
+                                        <p style={{ marginTop: '8px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                            {profileError}
+                                        </p>
+                                    )}
+                                </div>
+                                <motion.div 
+                                    initial='hidden' animate='visible'
+                                    variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+                                    style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}
+                                >
+                                    {appointmentsLoading
+                                        ? [0, 1, 2, 3].map((idx) => (
+                                            <div
+                                                key={idx}
+                                                style={{
+                                                    padding: '16px 24px',
+                                                    background: 'rgba(255,255,255,0.75)',
+                                                    backdropFilter: 'blur(16px)',
+                                                    border: '1px solid rgba(214,238,234,0.8)',
+                                                    borderRadius: '20px',
+                                                    textAlign: 'center',
+                                                    boxShadow: '0 8px 32px rgba(11,158,135,0.05)',
+                                                    minWidth: '130px',
+                                                }}
+                                            >
+                                                <div style={{ width: '56px', height: '28px', borderRadius: '10px', margin: '0 auto 8px', background: 'rgba(11,158,135,0.12)' }} />
+                                                <div style={{ width: '88px', height: '10px', borderRadius: '999px', margin: '0 auto', background: 'rgba(11,158,135,0.1)' }} />
+                                            </div>
+                                        ))
+                                        : quickStats.map((stat, i) => (
+                                            <motion.div 
+                                                key={i}
+                                                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                                                style={{ 
+                                                    padding: '16px 24px', 
+                                                    background: 'rgba(255,255,255,0.75)', 
+                                                    backdropFilter: 'blur(16px)',
+                                                    border: '1px solid rgba(214,238,234,0.8)',
+                                                    borderRadius: '20px',
+                                                    textAlign: 'center',
+                                                    boxShadow: '0 8px 32px rgba(11,158,135,0.05)',
+                                                    minWidth: '130px'
+                                                }}
+                                            >
+                                                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '4px' }}>
+                                                    <AnimatedCounter target={stat.value} />
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                    {stat.label}
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                </motion.div>
+                            </div>
+                            {appointmentsError && (
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '-8px' }}>
+                                    {appointmentsError}
+                                </p>
+                            )}
+                        </header>
 
-                            <motion.button
-                                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                                onClick={doSearch}
-                                style={{
-                                    padding: '11px 26px',
-                                    background: 'linear-gradient(135deg,#0b9e87,#34d9be)',
-                                    color: 'white', border: 'none', borderRadius: '12px',
-                                    fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
-                                    fontFamily: 'Inter, sans-serif', flexShrink: 0,
-                                    boxShadow: '0 3px 12px rgba(11,158,135,0.35)',
-                                    letterSpacing: '-0.01em',
-                                }}
-                            >
-                                Search →
-                            </motion.button>
-                        </div>
-
-                        {/* Live dropdown */}
-                        <AnimatePresence>
-                            {isFocused && preview.length > 0 && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                                    transition={{ duration: 0.15 }}
+                        {/* Search Bar */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                            style={{
+                                position: 'relative', marginBottom: '48px',
+                                background: 'rgba(255,255,255,0.9)',
+                                backdropFilter: 'blur(16px)',
+                                borderRadius: '20px',
+                                border: '1px solid rgba(214,238,234,0.9)',
+                                padding: '6px 18px',
+                                boxShadow: isFocused ? '0 0 0 4px rgba(11,158,135,0.15)' : '0 8px 32px rgba(0,0,0,0.06)',
+                                transition: 'box-shadow 0.3s, border-color 0.3s'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <svg width='24' height='24' fill='none' stroke='var(--accent)' viewBox='0 0 24 24' strokeWidth='2' style={{ flexShrink: 0 }}>
+                                    <path strokeLinecap='round' strokeLinejoin='round' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' />
+                                </svg>
+                                <input 
+                                    type='text' 
+                                    placeholder='Search for doctors, specialties, or hospitals...' 
                                     style={{
-                                        position: 'absolute', top: '100%', left: 0, right: 0,
-                                        marginTop: '8px',
-                                        background: 'rgba(255,255,255,0.97)',
-                                        backdropFilter: 'blur(16px)',
-                                        border: '1.5px solid var(--border)',
+                                        flex: 1, padding: '16px 16px', border: 'none', outline: 'none',
+                                        background: 'transparent', fontSize: '1.0625rem', color: 'var(--text-primary)',
+                                        fontFamily: 'inherit'
+                                    }}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => setFocused(true)}
+                                    onBlur={() => setFocused(false)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') submitSearch();
+                                    }}
+                                />
+                                <button
+                                    onClick={submitSearch}
+                                    style={{
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                                        color: 'white',
                                         borderRadius: '14px',
-                                        boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
-                                        zIndex: 100, overflow: 'hidden',
+                                        padding: '10px 14px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        fontFamily: 'inherit',
+                                        boxShadow: '0 8px 24px rgba(11,158,135,0.18)',
                                     }}
                                 >
-                                    {detection && (
-                                        <div style={{
-                                            padding: '10px 16px',
-                                            background: 'var(--accent-bg)',
-                                            borderBottom: '1px solid rgba(11,158,135,0.12)',
-                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                        }}>
-                                            <span style={{ fontSize: '0.8125rem', color: 'var(--accent-dark)', fontWeight: 500 }}>
-                                                Searching <strong>"{detection.keyword}"</strong> → <strong>{detection.specialty}</strong>
-                                            </span>
+                                    Search
+                                </button>
+                            </div>
+                        </motion.div>
+
+                        {/* 2-Column Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.8fr) minmax(0, 1.2fr)', gap: '40px' }}>
+                            
+                            {/* Left Column */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                                <LiveStatusCard
+                                    loading={dashboard.status.loading}
+                                    error={dashboard.status.error}
+                                    data={dashboard.status.data}
+                                    polledAt={dashboard.status.fetchedAt}
+                                    nextRefreshSec={dashboard.nextRefreshSec}
+                                />
+
+                                {/* Upcoming Appointments */}
+                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Upcoming Appointments</h2>
+                                    {appointmentsLoading ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {[0, 1].map((idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        padding: '20px 24px',
+                                                        borderRadius: '20px',
+                                                        background: 'rgba(255,255,255,0.8)',
+                                                        backdropFilter: 'blur(16px)',
+                                                        border: '1px solid rgba(214,238,234,0.7)',
+                                                        boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                                                    }}
+                                                >
+                                                    <div style={{ width: '210px', maxWidth: '100%', height: '16px', borderRadius: '999px', background: 'rgba(11,158,135,0.14)', marginBottom: '10px' }} />
+                                                    <div style={{ width: '280px', maxWidth: '100%', height: '12px', borderRadius: '999px', background: 'rgba(11,158,135,0.1)' }} />
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
-                                    {preview.map((item, i) => (
-                                        <motion.div
-                                            key={i}
-                                            whileHover={{ background: '#f0faf8' }}
-                                            onClick={() => navigate(item.specialty ? `/doctors/${item.id}` : `/hospitals/${item.id}`)}
+                                    ) : appointmentsError ? (
+                                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                            {appointmentsError}
+                                        </p>
+                                    ) : upcomingAppointments.length === 0 ? (
+                                        <div
                                             style={{
-                                                padding: '12px 16px', cursor: 'pointer',
-                                                display: 'flex', gap: '12px', alignItems: 'center',
-                                                borderBottom: i < preview.length - 1 ? '1px solid var(--border)' : 'none',
+                                                padding: '24px',
+                                                borderRadius: '20px',
+                                                background: 'rgba(255,255,255,0.8)',
+                                                backdropFilter: 'blur(16px)',
+                                                border: '1px solid rgba(214,238,234,0.7)',
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                                                textAlign: 'center',
                                             }}
                                         >
-                                            <div style={{
-                                                width: 38, height: 38, borderRadius: '10px',
-                                                background: item.specialty ? 'rgba(11,158,135,0.1)' : 'rgba(88,101,242,0.1)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0,
-                                            }}>
-                                                {item.specialty ? '👨‍⚕️' : '🏥'}
-                                            </div>
-                                            <div style={{ textAlign: 'left' }}>
-                                                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</p>
-                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                    {item.specialty ? `${item.specialty} · ${item.hospital}` : `${item.city}, ${item.state}`}
-                                                </p>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                    <motion.div
-                                        whileHover={{ background: 'rgba(11,158,135,0.05)' }}
-                                        onClick={doSearch}
-                                        style={{
-                                            padding: '11px 16px', textAlign: 'center', cursor: 'pointer',
-                                            fontSize: '0.8125rem', color: 'var(--accent-dark)',
-                                            fontWeight: 600, borderTop: '1px solid var(--border)',
-                                        }}
-                                    >
-                                        See all results for "{query}" →
-                                    </motion.div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </motion.div>
-
-                    {/* Quick search chips */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.35 }}
-                        style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', maxWidth: '680px' }}
-                    >
-                        {QUICK_SEARCHES.map((qs, i) => (
-                            <motion.button
-                                key={qs.label}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.36 + i * 0.03 }}
-                                whileHover={{ y: -2, boxShadow: '0 6px 16px rgba(11,158,135,0.14)', borderColor: 'rgba(11,158,135,0.4)', scale: 1.02 }}
-                                whileTap={{ scale: 0.96 }}
-                                onClick={() => { setQuery(qs.label); navigate(`/patient/search?q=${encodeURIComponent(qs.label)}`); }}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '5px',
-                                    padding: '8px 14px',
-                                    background: 'rgba(255,255,255,0.85)',
-                                    backdropFilter: 'blur(8px)',
-                                    border: '1.5px solid var(--border)',
-                                    borderRadius: '20px', fontSize: '0.8125rem',
-                                    color: 'var(--text-secondary)', fontWeight: 500,
-                                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                                    transition: 'border-color 0.15s, color 0.15s',
-                                }}
-                            >
-                                <span style={{ fontSize: '0.9rem' }}>{qs.icon}</span>
-                                {qs.label}
-                            </motion.button>
-                        ))}
-                    </motion.div>
-                </section>
-
-                {/* ── STATS STRIP ───────────────────────────────── */}
-                <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 64px' }}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.45 }}
-                        style={{
-                            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px',
-                        }}
-                    >
-                        {STATS.map((s, i) => (
-                            <motion.div
-                                key={s.label}
-                                whileHover={{ y: -5, boxShadow: `0 16px 36px ${s.color}20` }}
-                                style={{
-                                    background: 'rgba(255,255,255,0.85)',
-                                    backdropFilter: 'blur(12px)',
-                                    border: '1px solid rgba(214,238,234,0.7)',
-                                    borderRadius: '18px', padding: '22px 16px',
-                                    textAlign: 'center', cursor: 'default',
-                                    transition: 'box-shadow 0.25s, transform 0.25s',
-                                    position: 'relative', overflow: 'hidden',
-                                }}
-                            >
-                                {/* Accent corner glow */}
-                                <div style={{
-                                    position: 'absolute', top: -20, right: -20,
-                                    width: 70, height: 70, borderRadius: '50%',
-                                    background: `${s.color}18`,
-                                }} />
-                                <p style={{ fontSize: '1.75rem', marginBottom: '8px' }}>{s.icon}</p>
-                                <p style={{
-                                    fontSize: '1.875rem', fontWeight: 900,
-                                    letterSpacing: '-0.04em',
-                                    background: `linear-gradient(135deg, ${s.color}, ${s.color}aa)`,
-                                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                                    marginBottom: '4px',
-                                }}>
-                                    <AnimatedCounter target={s.value} suffix={s.suffix} />
-                                </p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.03em' }}>{s.label}</p>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                </section>
-
-                {/* ── ACTION CARDS ──────────────────────────────── */}
-                <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 64px' }}>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.5 }}
-                        style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '18px' }}
-                    >
-                        What do you need today?
-                    </motion.p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
-                        {ACTIONS.map((card, i) => (
-                            <Link key={card.to} to={card.to} style={{ textDecoration: 'none' }}>
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.52 + i * 0.08 }}
-                                    whileHover={{ y: -6, boxShadow: `0 20px 48px ${card.glow}` }}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.9)',
-                                        backdropFilter: 'blur(12px)',
-                                        border: '1.5px solid rgba(214,238,234,0.7)',
-                                        borderRadius: '20px', padding: '26px',
-                                        cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                                        transition: 'box-shadow 0.3s, transform 0.3s, border-color 0.2s',
-                                        height: '100%',
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.borderColor = card.glow.replace('0.', '0.5')}
-                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(214,238,234,0.7)'}
-                                >
-                                    {/* Corner gradient */}
-                                    <div style={{
-                                        position: 'absolute', top: 0, right: 0,
-                                        width: 120, height: 120,
-                                        background: `radial-gradient(circle at top right, ${card.glow}, transparent 70%)`,
-                                        borderRadius: '0 20px 0 0',
-                                    }} />
-
-                                    {/* Tag */}
-                                    {card.tag && (
-                                        <div style={{
-                                            position: 'absolute', top: '14px', right: '14px',
-                                            padding: '3px 10px', borderRadius: '10px',
-                                            background: card.gradient, color: 'white',
-                                            fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em',
-                                        }}>
-                                            {card.tag}
+                                            <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                                                No upcoming appointments
+                                            </p>
+                                            <Link to='/patient/search' style={{ textDecoration: 'none' }}>
+                                                <button
+                                                    style={{
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        padding: '10px 20px',
+                                                        background: 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                                                        color: '#fff',
+                                                        fontSize: '0.8125rem',
+                                                        fontWeight: 700,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Book Appointment
+                                                </button>
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {upcomingAppointments.map((appt, i) => {
+                                                const statusColors = getStatusColors(appt.status);
+                                                return (
+                                                    <motion.div
+                                                        key={appt.id}
+                                                        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                                                        style={{
+                                                            padding: '20px 24px', borderRadius: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px',
+                                                            background: 'rgba(255,255,255,0.8)',
+                                                            backdropFilter: 'blur(16px)',
+                                                            border: '1px solid rgba(214,238,234,0.7)',
+                                                            boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <h4 style={{ fontSize: '1.0625rem', fontWeight: 800, marginBottom: '6px' }}>{appt.doctor}</h4>
+                                                            <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{appt.type} • {appt.date}</p>
+                                                        </div>
+                                                        <span style={{
+                                                            padding: '6px 16px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                            background: statusColors.background,
+                                                            color: statusColors.color,
+                                                        }}>
+                                                            {appt.status}
+                                                        </span>
+                                                    </motion.div>
+                                                );
+                                            })}
                                         </div>
                                     )}
+                                </motion.section>
 
-                                    {/* Icon */}
-                                    <motion.div
-                                        whileHover={{ rotate: [0, -8, 8, 0], scale: 1.1 }}
-                                        transition={{ duration: 0.4 }}
+                                {/* Medical Timeline */}
+                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Medical Timeline</h2>
+                                    {timelineLoading ? (
+                                        <div style={{ padding: '24px', borderRadius: '20px', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(16px)', border: '1px solid rgba(214,238,234,0.7)' }}>
+                                            <div style={{ width: '220px', height: '14px', borderRadius: '999px', background: 'rgba(11,158,135,0.14)', marginBottom: '10px' }} />
+                                            <div style={{ width: '320px', height: '10px', borderRadius: '999px', background: 'rgba(11,158,135,0.10)' }} />
+                                        </div>
+                                    ) : timelineError ? (
+                                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{timelineError}</p>
+                                    ) : timeline.length === 0 ? (
+                                        <div style={{ padding: '24px', borderRadius: '20px', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(16px)', border: '1px solid rgba(214,238,234,0.7)', textAlign: 'center' }}>
+                                            <p style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>No past visits yet.</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                            {timeline.map((v, i) => {
+                                                const dateObj = new Date(v.date);
+                                                const dateLabel = Number.isNaN(dateObj.getTime())
+                                                    ? '—'
+                                                    : dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+                                                return (
+                                                    <motion.div
+                                                        key={v.id}
+                                                        initial={{ opacity: 0, y: 16 }}
+                                                        whileInView={{ opacity: 1, y: 0 }}
+                                                        viewport={{ once: true, amount: 0.2 }}
+                                                        transition={{ delay: i * 0.04 }}
+                                                        style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: '110px 1fr',
+                                                            gap: '14px',
+                                                            alignItems: 'stretch',
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingTop: '6px' }}>
+                                                            <div style={{ fontSize: '0.8125rem', fontWeight: 900, color: 'var(--text-primary)' }}>{dateLabel}</div>
+                                                            <div style={{ width: '2px', flex: 1, marginTop: '10px', background: 'linear-gradient(180deg, rgba(11,158,135,0.35), rgba(11,158,135,0.05))', borderRadius: '999px' }} />
+                                                        </div>
+
+                                                        <div
+                                                            style={{
+                                                                padding: '18px 20px',
+                                                                borderRadius: '20px',
+                                                                background: 'rgba(255,255,255,0.8)',
+                                                                backdropFilter: 'blur(16px)',
+                                                                border: '1px solid rgba(214,238,234,0.7)',
+                                                                boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                                                            }}
+                                                        >
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                                                                <div>
+                                                                    <h4 style={{ fontSize: '1.0rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '6px' }}>{v.doctor?.name || 'Doctor'}</h4>
+                                                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                                        {v.doctor?.specialty || '—'} • {v.hospital?.name || '—'}
+                                                                    </p>
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const qs = new URLSearchParams();
+                                                                            if (v.hospital?.id) qs.set('hospitalId', String(v.hospital.id));
+                                                                            qs.set('doctorId', String(v.doctor?.id || ''));
+                                                                            navigate(`/patient/book/${v.doctor?.id}?${qs.toString()}`);
+                                                                        }}
+                                                                        style={{ borderRadius: '10px', padding: '8px 12px', background: 'rgba(11,158,135,0.10)', border: '1px solid rgba(11,158,135,0.22)', color: 'var(--accent-dark)', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}
+                                                                    >
+                                                                        Rebook Same Doctor
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const qs = new URLSearchParams();
+                                                                            if (v.hospital?.id) qs.set('hospitalId', String(v.hospital.id));
+                                                                            qs.set('doctorId', String(v.doctor?.id || ''));
+                                                                            qs.set('followUp', '1');
+                                                                            navigate(`/patient/book/${v.doctor?.id}?${qs.toString()}`);
+                                                                        }}
+                                                                        style={{ borderRadius: '10px', padding: '8px 12px', background: 'rgba(88,101,242,0.10)', border: '1px solid rgba(88,101,242,0.22)', color: '#3843c8', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}
+                                                                    >
+                                                                        Book Follow-up
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {v.diagnosis && (
+                                                                <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '14px', background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(14,165,233,0.18)' }}>
+                                                                    <p style={{ fontSize: '0.6875rem', fontWeight: 900, letterSpacing: '0.08em', color: '#0369a1', marginBottom: '6px' }}>DIAGNOSIS</p>
+                                                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>{v.diagnosis}</p>
+                                                                </div>
+                                                            )}
+
+                                                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                                                                    {v.prescription ? 'Prescription available' : 'No prescription'}
+                                                                </div>
+                                                                {v.prescription && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            // For now, show content inline via alert-like UI in future; keep minimal: open a modal route later.
+                                                                            const text = v.prescription?.content || '';
+                                                                            if (!text) return;
+                                                                            window.alert(text);
+                                                                        }}
+                                                                        style={{
+                                                                            border: 'none',
+                                                                            borderRadius: '10px',
+                                                                            padding: '8px 12px',
+                                                                            background: 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                                                                            color: '#fff',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: 900,
+                                                                            cursor: 'pointer',
+                                                                            fontFamily: 'inherit',
+                                                                            whiteSpace: 'nowrap',
+                                                                        }}
+                                                                    >
+                                                                        View Prescription
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </motion.section>
+
+                                <ActivityFeed
+                                    loading={dashboard.activity.loading}
+                                    error={dashboard.activity.error}
+                                    data={dashboard.activity.data}
+                                />
+                            </div>
+
+                            {/* Right Column */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                                <ResumeCard
+                                    loading={dashboard.lastAction.loading}
+                                    error={dashboard.lastAction.error}
+                                    data={dashboard.lastAction.data}
+                                />
+
+                                <StatsRow
+                                    loading={dashboard.stats.loading}
+                                    error={dashboard.stats.error}
+                                    data={dashboard.stats.data}
+                                />
+
+                                <Recommendations
+                                    loading={dashboard.recommendations.loading}
+                                    error={dashboard.recommendations.error}
+                                    data={dashboard.recommendations.data}
+                                />
+
+                                {/* Health Profile (Prominent) */}
+                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Health Profile</h2>
+                                        {!healthProfileLoading && (
+                                            <button
+                                                onClick={() => setHealthEdit(v => !v)}
+                                                style={{
+                                                    border: '1px solid rgba(11,158,135,0.25)',
+                                                    background: 'rgba(11,158,135,0.08)',
+                                                    color: 'var(--accent-dark)',
+                                                    padding: '8px 12px',
+                                                    borderRadius: '10px',
+                                                    fontSize: '0.8125rem',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer',
+                                                    fontFamily: 'inherit',
+                                                }}
+                                            >
+                                                {healthEdit ? 'Close' : 'Edit'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div
                                         style={{
-                                            width: 52, height: 52, borderRadius: '14px',
-                                            background: card.gradient,
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '1.5rem', marginBottom: '16px',
-                                            boxShadow: `0 4px 16px ${card.glow}`,
+                                            padding: '22px',
+                                            borderRadius: '22px',
+                                            background: 'rgba(255,255,255,0.82)',
+                                            backdropFilter: 'blur(18px)',
+                                            border: '1px solid rgba(214,238,234,0.8)',
+                                            boxShadow: '0 12px 40px rgba(11,158,135,0.08)',
                                         }}
                                     >
-                                        {card.icon}
-                                    </motion.div>
+                                        {healthProfileLoading ? (
+                                            <div style={{ height: '72px', borderRadius: '16px', background: 'rgba(11,158,135,0.10)' }} />
+                                        ) : (
+                                            <>
+                                                {healthProfileError && (
+                                                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400e', fontSize: '0.8125rem', fontWeight: 700 }}>
+                                                        {healthProfileError}
+                                                    </div>
+                                                )}
+                                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
+                                                    <span style={{ fontSize: '0.6875rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>BLOOD GROUP</span>
+                                                    <span style={{ marginLeft: 'auto', fontSize: '0.9375rem', fontWeight: 900, color: 'var(--accent)' }}>
+                                                        {healthProfile?.bloodGroup || profile?.blood_group || '—'}
+                                                    </span>
+                                                </div>
 
-                                    <h3 style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', letterSpacing: '-0.02em' }}>
-                                        {card.title}
-                                    </h3>
-                                    <p style={{ fontSize: '0.8375rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                                        {card.desc}
-                                    </p>
+                                                {!healthEdit ? (
+                                                    <>
+                                                        <div style={{ marginBottom: '12px' }}>
+                                                            <p style={{ fontSize: '0.6875rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px' }}>ALLERGIES</p>
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                                {(healthProfile?.allergies || []).length === 0 ? (
+                                                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>None</span>
+                                                                ) : (healthProfile.allergies || []).map((a) => (
+                                                                    <span key={a} style={{ padding: '6px 10px', borderRadius: '999px', background: 'rgba(20,184,166,0.10)', border: '1px solid rgba(20,184,166,0.25)', color: '#0f766e', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                                        {a}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
 
-                                    {/* Arrow */}
-                                    <div style={{
-                                        marginTop: '18px', display: 'flex', alignItems: 'center', gap: '6px',
-                                        fontSize: '0.8125rem', fontWeight: 700,
-                                        background: card.gradient,
-                                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                                    }}>
-                                        Explore <span style={{ fontSize: '1rem' }}>→</span>
+                                                        <div>
+                                                            <p style={{ fontSize: '0.6875rem', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '8px' }}>CHRONIC CONDITIONS</p>
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                                {(healthProfile?.chronicConditions || []).length === 0 ? (
+                                                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>None</span>
+                                                                ) : (healthProfile.chronicConditions || []).map((c) => (
+                                                                    <span key={c} style={{ padding: '6px 10px', borderRadius: '999px', background: 'rgba(11,158,135,0.10)', border: '1px solid rgba(11,158,135,0.22)', color: 'var(--accent-dark)', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                                        {c}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                                                            Blood group
+                                                            <input value={healthDraft.bloodGroup} onChange={(e) => setHealthDraft(d => ({ ...d, bloodGroup: e.target.value }))} placeholder="e.g. O+" style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                        </label>
+                                                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                                                            Allergies (comma-separated)
+                                                            <input value={healthDraft.allergies} onChange={(e) => setHealthDraft(d => ({ ...d, allergies: e.target.value }))} placeholder="e.g. Penicillin, Peanuts" style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                        </label>
+                                                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                                                            Chronic conditions (comma-separated)
+                                                            <input value={healthDraft.chronicConditions} onChange={(e) => setHealthDraft(d => ({ ...d, chronicConditions: e.target.value }))} placeholder="e.g. Diabetes, Asthma" style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                        </label>
+                                                        <button
+                                                            disabled={healthSaving}
+                                                            onClick={async () => {
+                                                                setHealthSaving(true);
+                                                                try {
+                                                                    const payload = {
+                                                                        bloodGroup: healthDraft.bloodGroup,
+                                                                        allergies: healthDraft.allergies.split(',').map(s => s.trim()).filter(Boolean),
+                                                                        chronicConditions: healthDraft.chronicConditions.split(',').map(s => s.trim()).filter(Boolean),
+                                                                    };
+                                                                    const resp = await updateHealthProfile(payload);
+                                                                    setHealthProfile(resp?.data || null);
+                                                                    setHealthEdit(false);
+                                                                    setHealthProfileError('');
+                                                                } catch (e) {
+                                                                    setHealthProfileError(prettyApiError(e.message) || 'Failed to save health profile.');
+                                                                } finally {
+                                                                    setHealthSaving(false);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                marginTop: '4px',
+                                                                border: 'none',
+                                                                borderRadius: '12px',
+                                                                padding: '12px 14px',
+                                                                background: healthSaving ? 'rgba(11,158,135,0.7)' : 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                                                                color: '#fff',
+                                                                fontSize: '0.875rem',
+                                                                fontWeight: 900,
+                                                                cursor: healthSaving ? 'not-allowed' : 'pointer',
+                                                                fontFamily: 'inherit',
+                                                            }}
+                                                        >
+                                                            {healthSaving ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
-                                </motion.div>
-                            </Link>
-                        ))}
-                    </div>
-                </section>
+                                </motion.section>
 
-                {/* ── TRUST STRIP ───────────────────────────────── */}
-                <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 80px' }}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.7 }}
-                        style={{
-                            background: 'rgba(255,255,255,0.75)',
-                            backdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(214,238,234,0.8)',
-                            borderRadius: '18px', padding: '20px 32px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            flexWrap: 'wrap', gap: '16px',
-                        }}
-                    >
-                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            Trusted & Certified
-                        </p>
-                        <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            {TRUST.map(t => (
-                                <motion.div
-                                    key={t.label}
-                                    whileHover={{ scale: 1.05 }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'default' }}
-                                >
-                                    <span style={{ fontSize: '1.1rem' }}>{t.icon}</span>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t.label}</span>
-                                </motion.div>
-                            ))}
+                                {/* Quick Actions */}
+                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Quick Actions</h2>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                                        {quickActions.map((action, i) => (
+                                            <Link key={i} to={action.link} style={{ textDecoration: 'none' }}>
+                                                <motion.div 
+                                                    initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                                                    whileHover={{ y: -6, borderColor: 'rgba(11,158,135,0.4)', boxShadow: '0 16px 40px rgba(11,158,135,0.15)' }}
+                                                    style={{ 
+                                                        padding: '24px 20px', borderRadius: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                                                        background: 'rgba(255,255,255,0.8)', 
+                                                        backdropFilter: 'blur(16px)',
+                                                        border: '1px solid rgba(214,238,234,0.7)',
+                                                        transition: 'box-shadow 0.3s, border-color 0.3s'
+                                                    }}
+                                                >
+                                                    <motion.div 
+                                                        whileHover={{ scale: 1.15 }} transition={{ type: 'spring', stiffness: 400 }}
+                                                        style={{ 
+                                                            width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', marginBottom: '16px', boxShadow: '0 8px 24px rgba(11,158,135,0.2)',
+                                                            background: 'linear-gradient(135deg, #0b9e87, #34d9be)' 
+                                                        }}
+                                                    >
+                                                        <span style={{ fontSize: '1.5rem', color: 'white', userSelect: 'none' }}>{action.icon}</span>
+                                                    </motion.div>
+                                                    <div style={{ fontSize: '0.9375rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>{action.label}</div>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{action.desc}</div>
+                                                </motion.div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </motion.section>
+
+                                {/* Medication Reminders */}
+                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Medication Reminders</h2>
+                                        <button
+                                            onClick={() => setAddReminderOpen(v => !v)}
+                                            style={{
+                                                border: '1px solid rgba(11,158,135,0.25)',
+                                                background: 'rgba(11,158,135,0.08)',
+                                                color: 'var(--accent-dark)',
+                                                padding: '8px 12px',
+                                                borderRadius: '10px',
+                                                fontSize: '0.8125rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer',
+                                                fontFamily: 'inherit',
+                                            }}
+                                        >
+                                            {addReminderOpen ? 'Close' : '+ Add'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ padding: '22px', borderRadius: '22px', background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(18px)', border: '1px solid rgba(214,238,234,0.8)' }}>
+                                        {addReminderOpen && (
+                                            <div style={{ marginBottom: '16px', padding: '14px', borderRadius: '16px', background: 'rgba(11,158,135,0.06)', border: '1px solid rgba(11,158,135,0.12)' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                    <input value={addReminderDraft.medicineName} onChange={(e) => setAddReminderDraft(d => ({ ...d, medicineName: e.target.value }))} placeholder="Medicine name" style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    <input value={addReminderDraft.dosage} onChange={(e) => setAddReminderDraft(d => ({ ...d, dosage: e.target.value }))} placeholder="Dosage (e.g. 1 tablet)" style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    <select value={addReminderDraft.frequencyType} onChange={(e) => setAddReminderDraft(d => ({ ...d, frequencyType: e.target.value }))} style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }}>
+                                                        <option value="DAILY">Once daily</option>
+                                                        <option value="TWICE_DAILY">Twice daily</option>
+                                                    </select>
+                                                    <input type="date" value={addReminderDraft.startDate} onChange={(e) => setAddReminderDraft(d => ({ ...d, startDate: e.target.value }))} style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    <input type="time" value={addReminderDraft.time1} onChange={(e) => setAddReminderDraft(d => ({ ...d, time1: e.target.value }))} style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    {addReminderDraft.frequencyType === 'TWICE_DAILY' ? (
+                                                        <input type="time" value={addReminderDraft.time2} onChange={(e) => setAddReminderDraft(d => ({ ...d, time2: e.target.value }))} style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    ) : (
+                                                        <input type="date" value={addReminderDraft.endDate} onChange={(e) => setAddReminderDraft(d => ({ ...d, endDate: e.target.value }))} placeholder="End date (optional)" style={{ padding: '10px 12px', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontFamily: 'inherit' }} />
+                                                    )}
+                                                </div>
+                                                <button
+                                                    disabled={addReminderSaving}
+                                                    onClick={async () => {
+                                                        setAddReminderSaving(true);
+                                                        try {
+                                                            const times = addReminderDraft.frequencyType === 'TWICE_DAILY'
+                                                                ? [addReminderDraft.time1, addReminderDraft.time2]
+                                                                : [addReminderDraft.time1];
+                                                            const payload = {
+                                                                medicineName: addReminderDraft.medicineName,
+                                                                dosage: addReminderDraft.dosage,
+                                                                frequency: `${addReminderDraft.frequencyType}@${times.join(',')}`,
+                                                                startDate: addReminderDraft.startDate,
+                                                                endDate: addReminderDraft.frequencyType === 'TWICE_DAILY' ? (addReminderDraft.endDate || null) : (addReminderDraft.endDate || null),
+                                                            };
+                                                            await createMedicationReminder(payload);
+                                                            await fetchReminders();
+                                                            setAddReminderOpen(false);
+                                                            setAddReminderDraft((d) => ({ ...d, medicineName: '', dosage: '' }));
+                                                        } catch (e) {
+                                                            setRemindersError(e.message || 'Failed to add reminder.');
+                                                        } finally {
+                                                            setAddReminderSaving(false);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        marginTop: '12px',
+                                                        width: '100%',
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        padding: '12px 14px',
+                                                        background: addReminderSaving ? 'rgba(11,158,135,0.7)' : 'linear-gradient(135deg, #0b9e87, #34d9be)',
+                                                        color: '#fff',
+                                                        fontSize: '0.875rem',
+                                                        fontWeight: 900,
+                                                        cursor: addReminderSaving ? 'not-allowed' : 'pointer',
+                                                        fontFamily: 'inherit',
+                                                    }}
+                                                >
+                                                    {addReminderSaving ? 'Adding...' : 'Add reminder'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {remindersLoading ? (
+                                            <div style={{ height: '72px', borderRadius: '16px', background: 'rgba(11,158,135,0.10)' }} />
+                                        ) : (
+                                            <>
+                                                {remindersError && (
+                                                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.25)', color: '#92400e', fontSize: '0.8125rem', fontWeight: 700 }}>
+                                                        {remindersError}
+                                                    </div>
+                                                )}
+                                                {reminders.filter(r => r.active).length === 0 ? (
+                                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>No active reminders yet.</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                {reminders.filter(r => r.active).map((r) => (
+                                                    <div key={r.id} style={{ padding: '14px', borderRadius: '16px', background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(214,238,234,0.7)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                                                        <div>
+                                                            <p style={{ fontSize: '0.9375rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '4px' }}>{r.medicineName}</p>
+                                                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                                {r.dosage} • {String(r.frequency || '').replace('_', ' ').replace('@', ' @ ')}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={async () => {
+                                                                try {
+                                                                    await patchMedicationReminder(r.id, { active: false });
+                                                                    await fetchReminders();
+                                                                } catch (e) {
+                                                                    setRemindersError(e.message || 'Failed to update reminder.');
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                border: '1px solid rgba(0,0,0,0.10)',
+                                                                background: 'rgba(0,0,0,0.04)',
+                                                                color: 'var(--text-muted)',
+                                                                padding: '8px 12px',
+                                                                borderRadius: '10px',
+                                                                fontSize: '0.8125rem',
+                                                                fontWeight: 900,
+                                                                cursor: 'pointer',
+                                                                fontFamily: 'inherit',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                        >
+                                                            Mark inactive
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </motion.section>
+                            </div>
+
+                        </div>
+
+                        <div style={{ marginTop: '40px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px' }}>
+                            <NearbyHospitals
+                                loading={dashboard.hospitals.loading}
+                                error={dashboard.hospitals.error}
+                                data={dashboard.hospitals.data}
+                            />
+                            <VisitChart
+                                loading={dashboard.analytics.loading}
+                                error={dashboard.analytics.error}
+                                data={dashboard.analytics.data}
+                            />
                         </div>
                     </motion.div>
-                </section>
-                {/* ── HOW IT WORKS ──────────────────────────────── */}
-                <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 80px' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
-                            How QueueEase Works
-                        </h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem' }}>Your journey to better health, simplified.</p>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', position: 'relative' }}>
-                        {/* Connecting line */}
-                        <div style={{ position: 'absolute', top: '40px', left: '15%', right: '15%', height: '2px', background: 'var(--border)', zIndex: 0 }} />
-
-                        {[
-                            { step: '1', title: 'Find', desc: 'Search for the right doctor or hospital quickly.', icon: '🔍' },
-                            { step: '2', title: 'Book', desc: 'Secure a live token and skip the waiting room.', icon: '🎟️' },
-                            { step: '3', title: 'Consult', desc: 'Meet your doctor exactly when it\'s your turn.', icon: '👨‍⚕️' }
-                        ].map((s, i) => (
-                            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 + i * 0.1 }}
-                                style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                                <div style={{
-                                    width: 80, height: 80, margin: '0 auto 20px', borderRadius: '50%',
-                                    background: 'var(--bg-card)', border: '2px solid var(--accent)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '2rem', boxShadow: '0 8px 24px rgba(11,158,135,0.15)'
-                                }}>
-                                    {s.icon}
-                                </div>
-                                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>{s.title}</h3>
-                                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{s.desc}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* ── HEALTH ARTICLES ────────────────────────────── */}
-                <section style={{ maxWidth: '900px', margin: '0 auto', padding: '0 28px 100px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-                            Latest Health Insights
-                        </h2>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--accent)', cursor: 'pointer' }}>View all →</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-                        {[
-                            { title: 'Understanding Seasonal Allergies', readTime: '4 min read', category: 'Wellness', bg: 'linear-gradient(135deg, #e0f2fe, #bae6fd)' },
-                            { title: 'Heart Health: Daily Habits that Matter', readTime: '6 min read', category: 'Cardiology', bg: 'linear-gradient(135deg, #fce7f3, #fbcfe8)' },
-                        ].map((art, i) => (
-                            <motion.div key={i} whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.08)' }}
-                                style={{
-                                    position: 'relative', overflow: 'hidden', borderRadius: '20px',
-                                    padding: '30px 24px', cursor: 'pointer', border: '1px solid var(--border)',
-                                    background: 'var(--bg-card)', transition: 'all 0.3s'
-                                }}>
-                                <div style={{ position: 'absolute', top: 0, right: 0, width: '40%', height: '100%', background: art.bg, opacity: 0.6, filter: 'blur(30px)' }} />
-                                <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '20px', background: 'var(--accent-bg)', color: 'var(--accent-dark)', fontSize: '0.6875rem', fontWeight: 700, marginBottom: '16px' }}>{art.category}</span>
-                                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px', lineHeight: 1.4, position: 'relative', zIndex: 1 }}>{art.title}</h3>
-                                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 500 }}>⏱️ {art.readTime}</p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </section>
+                </div>
             </div>
-
-            {/* Global keyframes */}
-            <style>{`
-                @keyframes gradientShift {
-                    0%,100% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                }
-                @keyframes pulse {
-                    0%,100% { opacity:1; transform:scale(1); }
-                    50% { opacity:0.5; transform:scale(0.85); }
-                }
-            `}</style>
         </div>
     );
 }

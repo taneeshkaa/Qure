@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import { PatientNav } from './PatientDashboard';
@@ -14,6 +14,8 @@ function StarRating({ rating, size = 12 }) {
 export default function BookingPage() {
     const { doctorId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const followUp = searchParams.get('followUp') === '1';
     
     // Doctor data state - fetches from API, falls back to mock data
     const [doc, setDoc] = useState(null);
@@ -85,12 +87,17 @@ export default function BookingPage() {
         }
     }, [doctorId]);
 
+    useEffect(() => {
+        if (!followUp) return;
+        setCondition((prev) => (prev && prev.trim().length > 0 ? prev : 'Follow-up consultation'));
+    }, [followUp]);
+
     // Multi-step form state
     const [currentStep, setCurrentStep] = useState(1); // 1=Condition, 2=Slot, 3=Payment, 4=Confirm
     
     // Form field states
     const [selectedSlot, setSelectedSlot] = useState(null);
-    const [condition, setCondition] = useState('');
+    const [condition, setCondition] = useState(followUp ? 'Follow-up consultation' : '');
     const [conditionError, setConditionError] = useState(false);
     const [selectedDay, setSelectedDay] = useState(0);
     const [isBooking, setIsBooking] = useState(false);

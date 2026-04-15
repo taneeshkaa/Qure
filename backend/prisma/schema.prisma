@@ -122,6 +122,16 @@ model Patient {
 
   medicalProfile MedicalProfile?
   appointments   Appointment[]
+  medicationReminders MedicationReminder[]
+
+  // Phase 6 — Patient Dashboard ("Continue where you left")
+  last_action    String?   @map("last_action")
+  last_action_at DateTime? @map("last_action_at")
+
+  // Phase 5 — Health Profile Summary (patient-facing dashboard)
+  // Stored on Patient for quick access during emergencies.
+  allergies          String[] @default([])
+  chronic_conditions String[] @default([])
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
@@ -165,6 +175,16 @@ model Appointment {
   paymentMethod       String   @default("CASH") // UPI, CASH
   paymentStatus       String   @default("PENDING") // PAID, PENDING
 
+  // Phase 5 — Medical Timeline
+  diagnosis String?
+  notes     String? @db.Text
+
+  // Phase 5 — Live Queue Tracker Upgrade
+  // These are optional and can be calculated server-side as well.
+  estimatedWaitMinutes Int?
+  delayMinutes         Int      @default(0)
+  doctorDelayReason    String?
+
   patient      Patient             @relation(fields: [patient_id], references: [id], onDelete: Cascade)
   doctor       Doctor              @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
   reminders    Reminder[]
@@ -176,6 +196,25 @@ model Appointment {
 
   @@unique([doctor_id, date, slot], name: "unique_doctor_date_slot")
   @@map("appointments")
+}
+
+// ─── Medication Reminders (Phase 5) ───────────────────────────
+// Patient-managed reminders (client-side notifications).
+model MedicationReminder {
+  id           String    @id @default(uuid()) @db.Uuid
+  patientId    Int       @map("patient_id")
+  medicineName String
+  dosage       String
+  frequency    String
+  startDate    DateTime  @map("start_date")
+  endDate      DateTime? @map("end_date")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, active])
+  @@map("medication_reminders")
 }
 
 // ─── Reminders ───────────────────────────────────────────────
