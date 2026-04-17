@@ -16,3 +16,11 @@ export const registerHospital = (data) => api.post('/register/hospital', data);
 
 // Backend: POST /api/v1/patient/register
 export const registerPatient = (data) => api.post('/patient/register', data);
+
+// ─── Doctor Self-Registration ─────────────────────────────────
+// Backend: GET /api/v1/doctor/hospitals/:hospitalId/unregistered-doctors
+export const fetchUnregisteredDoctors = (hospitalId) =>
+    api.get(`/doctor/hospitals/${hospitalId}/unregistered-doctors`);
+
+// Backend: POST /api/v1/doctor/register
+export const registerDoctor = (data) => api.post('/doctor/register', data);

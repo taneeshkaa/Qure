@@ -1,0 +1,14 @@
+[dotenv@17.3.1] injecting env (5) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+
+🚀 Server running on port 5000
+📍 Local:    http://localhost:5000
+📍 Health:   http://localhost:5000/api/v1/health
+🌐 CORS:     http://localhost:5173
+📦 Mode:     development
+
+🔔 Reminder cron jobs started
+   → 1-day reminders: checked every hour
+   → 1-hour reminders: checked every 15 minutes
+✅ Database connected successfully
+
+⏰ [CRON] Checking 1-hour reminders...

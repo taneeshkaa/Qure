@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LayoutDashboard, Clock, User, Pill, ActivitySquare, Shield, CreditCard, HelpCircle, LogOut as LogOutIcon } from 'lucide-react';
 import api from '../../api/axios';
 import SparkleCanvas from '../../components/SparkleCanvas';
 import {
@@ -303,6 +304,20 @@ const formatWaitTime = (minutes) => {
 ───────────────────────────────────────────── */
 export default function PatientDashboard() {
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('overview');
+    const [isSidebarHovered, setSidebarHovered] = useState(false);
+
+    const SIDEBAR_ITEMS = useMemo(() => [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'timeline', label: 'Timeline', icon: Clock },
+        { id: 'profile', label: 'Health Profile', icon: User },
+        { id: 'medications', label: 'Medications', icon: Pill },
+        { id: 'reports', label: 'Lab Reports', icon: ActivitySquare },
+        { id: 'billing', label: 'Billing', icon: CreditCard },
+        { id: 'insurance', label: 'Insurance', icon: Shield },
+        { id: 'support', label: 'Support', icon: HelpCircle },
+    ], []);
+
     const dashboard = useDashboardData({ statusPollMs: 30_000 });
     const [searchQuery, setSearchQuery] = useState('');
     const [isFocused, setFocused] = useState(false);
@@ -570,11 +585,73 @@ export default function PatientDashboard() {
             <div style={{ position: 'relative', zIndex: 2 }}>
                 <PatientNav active='/patient/dashboard' patientName={profile?.full_name || ''} />
 
-                <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '48px 32px 80px' }}>
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                        
-                        {/* Header & Badges */}
-                        <header style={{ marginBottom: 'clamp(24px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '32px', maxWidth: '1300px', margin: '0 auto', padding: '32px 24px 80px', alignItems: 'flex-start', paddingLeft: '96px' }}>
+                    {/* EXPANDING SIDEBAR (FIXED TO LEFT EDGE) */}
+                    <motion.nav
+                        onHoverStart={() => setSidebarHovered(true)}
+                        onHoverEnd={() => setSidebarHovered(false)}
+                        animate={{ width: isSidebarHovered ? 240 : 80 }}
+                        style={{
+                            position: 'fixed', top: '100px', left: '16px', zIndex: 60,
+                            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(16px)',
+                            border: '1px solid rgba(214,238,234,0.8)', borderRadius: '24px',
+                            padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: '12px',
+                            overflow: 'hidden', flexShrink: 0, boxShadow: '0 12px 40px rgba(11,158,135,0.05)',
+                            height: 'calc(100vh - 120px)'
+                        }}
+                    >
+                        {SIDEBAR_ITEMS.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = activeTab === item.id;
+                            return (
+                                <motion.div
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    whileHover={{ 
+                                        x: isActive ? 0 : 4,
+                                        background: isActive ? 'var(--accent)' : 'rgba(11,158,135,0.08)'
+                                    }}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '16px', padding: '14px',
+                                        borderRadius: '16px', cursor: 'pointer',
+                                        background: isActive ? 'var(--accent)' : 'transparent',
+                                        color: isActive ? '#fff' : 'var(--text-secondary)',
+                                        transition: 'all 0.2s ease', whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    <Icon size={24} style={{ flexShrink: 0 }} />
+                                    <span style={{ fontWeight: 800, fontSize: '0.9375rem', opacity: isSidebarHovered ? 1 : 0, transition: 'opacity 0.2s', pointerEvents: isSidebarHovered ? 'auto' : 'none' }}>
+                                        {item.label}
+                                    </span>
+                                </motion.div>
+                            );
+                        })}
+                        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--text-muted)', textAlign: 'center', opacity: isSidebarHovered ? 1 : 0, transition: 'opacity 0.2s', whiteSpace: 'nowrap' }}>
+                                ACCOUNT
+                            </div>
+                            <motion.div
+                                whileHover={{ x: 4, background: 'rgba(244,63,94,0.08)' }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '16px', padding: '14px', borderRadius: '16px', cursor: 'pointer',
+                                    color: 'var(--error)', transition: 'all 0.2s ease', whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {/* Placeholder for Logout */}
+                                <LogOutIcon size={24} style={{ flexShrink: 0 }} />
+                                <span style={{ fontWeight: 800, fontSize: '0.9375rem', opacity: isSidebarHovered ? 1 : 0, transition: 'opacity 0.2s', pointerEvents: isSidebarHovered ? 'auto' : 'none' }}>
+                                    Log out
+                                </span>
+                            </motion.div>
+                        </div>
+                    </motion.nav>
+
+                    {/* MAIN CONTENT AREA WITH DUAL MARGIN SO SIDEBAR DOESNT OVERLAP */}
+                    <div style={{ flex: 1, minWidth: 0, marginLeft: isSidebarHovered ? '160px' : '0', transition: 'margin-left 0.3s ease-out' }}>
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+                            
+                            {/* Header & Badges */}
+                        <header style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '24px' }}>
                                 <div>
                                     {profileLoading ? (
@@ -606,7 +683,7 @@ export default function PatientDashboard() {
                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
                                         style={{ color: 'var(--text-secondary)', fontSize: '1.0625rem', marginTop: '10px', marginBottom: 0 }}
                                     >
-                                        Here is what\'s happening with your health today.
+                                        Here is what's happening with your health today.
                                     </motion.p>
                                     {profileError && (
                                         <p style={{ marginTop: '8px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -615,14 +692,13 @@ export default function PatientDashboard() {
                                     )}
                                 </div>
                                 <motion.div 
-                                    initial='hidden' animate='visible'
-                                    variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
                                     style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}
                                 >
                                     {appointmentsLoading
                                         ? [0, 1, 2, 3].map((idx) => (
-                                            <div
-                                                key={idx}
+                                            <motion.div
+                                                key={`loading-${idx}`}
+                                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                                                 style={{
                                                     padding: '16px 24px',
                                                     background: 'rgba(255,255,255,0.75)',
@@ -636,12 +712,12 @@ export default function PatientDashboard() {
                                             >
                                                 <div style={{ width: '56px', height: '28px', borderRadius: '10px', margin: '0 auto 8px', background: 'rgba(11,158,135,0.12)' }} />
                                                 <div style={{ width: '88px', height: '10px', borderRadius: '999px', margin: '0 auto', background: 'rgba(11,158,135,0.1)' }} />
-                                            </div>
+                                            </motion.div>
                                         ))
                                         : quickStats.map((stat, i) => (
                                             <motion.div 
-                                                key={i}
-                                                variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                                                key={stat.label}
+                                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
                                                 style={{ 
                                                     padding: '16px 24px', 
                                                     background: 'rgba(255,255,255,0.75)', 
@@ -724,20 +800,24 @@ export default function PatientDashboard() {
                         </motion.div>
 
                         {/* 2-Column Grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.8fr) minmax(0, 1.2fr)', gap: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: activeTab === 'overview' ? 'minmax(0, 1.8fr) minmax(0, 1.2fr)' : '1fr', gap: '40px' }}>
                             
                             {/* Left Column */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                                <LiveStatusCard
-                                    loading={dashboard.status.loading}
-                                    error={dashboard.status.error}
-                                    data={dashboard.status.data}
-                                    polledAt={dashboard.status.fetchedAt}
-                                    nextRefreshSec={dashboard.nextRefreshSec}
-                                />
+                                {activeTab === 'overview' && (
+                                    <>
+                                        <div id="live-status" style={{ scrollMarginTop: '90px' }}>
+                                            <LiveStatusCard
+                                                loading={dashboard.status.loading}
+                                                error={dashboard.status.error}
+                                                data={dashboard.status.data}
+                                                polledAt={dashboard.status.fetchedAt}
+                                                nextRefreshSec={dashboard.nextRefreshSec}
+                                            />
+                                        </div>
 
-                                {/* Upcoming Appointments */}
-                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                        {/* Upcoming Appointments */}
+                                        <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Upcoming Appointments</h2>
                                     {appointmentsLoading ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -827,9 +907,13 @@ export default function PatientDashboard() {
                                         </div>
                                     )}
                                 </motion.section>
+                                </>
+                                )}
 
                                 {/* Medical Timeline */}
-                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                {activeTab === 'timeline' && (
+                                    <>
+                                <motion.section id="timeline" style={{ scrollMarginTop: '90px' }} whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Medical Timeline</h2>
                                     {timelineLoading ? (
                                         <div style={{ padding: '24px', borderRadius: '20px', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(16px)', border: '1px solid rgba(214,238,234,0.7)' }}>
@@ -962,30 +1046,12 @@ export default function PatientDashboard() {
                                     error={dashboard.activity.error}
                                     data={dashboard.activity.data}
                                 />
-                            </div>
-
-                            {/* Right Column */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                                <ResumeCard
-                                    loading={dashboard.lastAction.loading}
-                                    error={dashboard.lastAction.error}
-                                    data={dashboard.lastAction.data}
-                                />
-
-                                <StatsRow
-                                    loading={dashboard.stats.loading}
-                                    error={dashboard.stats.error}
-                                    data={dashboard.stats.data}
-                                />
-
-                                <Recommendations
-                                    loading={dashboard.recommendations.loading}
-                                    error={dashboard.recommendations.error}
-                                    data={dashboard.recommendations.data}
-                                />
+                                </>
+                                )}
 
                                 {/* Health Profile (Prominent) */}
-                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                {activeTab === 'profile' && (
+                                <motion.section id="health-profile" style={{ scrollMarginTop: '90px' }} whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                         <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Health Profile</h2>
                                         {!healthProfileLoading && (
@@ -1116,8 +1182,10 @@ export default function PatientDashboard() {
                                         )}
                                     </div>
                                 </motion.section>
+                                )}
 
                                 {/* Quick Actions */}
+                                {activeTab === 'overview' && (
                                 <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '24px' }}>Quick Actions</h2>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
@@ -1150,9 +1218,11 @@ export default function PatientDashboard() {
                                         ))}
                                     </div>
                                 </motion.section>
+                                )}
 
                                 {/* Medication Reminders */}
-                                <motion.section whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
+                                {activeTab === 'medications' && (
+                                <motion.section id="medications" style={{ scrollMarginTop: '90px' }} whileInView={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 20 }} viewport={{ once: true, amount: 0.1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                         <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Medication Reminders</h2>
                                         <button
@@ -1288,10 +1358,39 @@ export default function PatientDashboard() {
                                         )}
                                     </div>
                                 </motion.section>
+                                )}
+                            </div>
+
+                            {/* Right Column */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                                {activeTab === 'overview' && (
+                                    <>
+                                <ResumeCard
+                                    loading={dashboard.lastAction.loading}
+                                    error={dashboard.lastAction.error}
+                                    data={dashboard.lastAction.data}
+                                />
+
+                                <div id="stats" style={{ scrollMarginTop: '90px' }}>
+                                    <StatsRow
+                                        loading={dashboard.stats.loading}
+                                        error={dashboard.stats.error}
+                                        data={dashboard.stats.data}
+                                    />
+                                </div>
+
+                                <Recommendations
+                                    loading={dashboard.recommendations.loading}
+                                    error={dashboard.recommendations.error}
+                                    data={dashboard.recommendations.data}
+                                />
+                                </>
+                                )}
                             </div>
 
                         </div>
 
+                        {activeTab === 'overview' && (
                         <div style={{ marginTop: '40px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: '24px' }}>
                             <NearbyHospitals
                                 loading={dashboard.hospitals.loading}
@@ -1304,7 +1403,9 @@ export default function PatientDashboard() {
                                 data={dashboard.analytics.data}
                             />
                         </div>
+                        )}
                     </motion.div>
+                    </div>
                 </div>
             </div>
         </div>

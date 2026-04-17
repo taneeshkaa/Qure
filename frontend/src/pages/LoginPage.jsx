@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import FloatingLabelInput from '../components/FloatingLabelInput';
 import PulseButton from '../components/PulseButton';
-import { loginHospital, loginAdmin, loginPatient } from '../api/auth';
+import { loginHospital, loginAdmin, loginPatient, loginDoctor } from '../api/auth';
 import { getAndClearRedirectPath } from '../utils/authRedirect';
 
 const ROLES = [
@@ -13,6 +13,15 @@ const ROLES = [
         icon: (
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m7-11v6m-3-3h6" />
+            </svg>
+        ),
+    },
+    {
+        value: 'doctor',
+        label: 'Doctor',
+        icon: (
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
             </svg>
         ),
     },
@@ -65,6 +74,26 @@ export default function LoginPage() {
                 return;
             }
 
+            // Doctor login
+            if (role === 'doctor') {
+                const res = await loginDoctor(email.trim(), password);
+
+                localStorage.setItem('token', res.token);
+                localStorage.setItem('user', JSON.stringify({
+                    id: res.data.doctor_id,
+                    full_name: res.data.full_name,
+                    specialization: res.data.specialization,
+                    hospital_id: res.data.hospital_id,
+                    hospital_name: res.data.hospital_name,
+                    email: res.data.email,
+                    role: 'DOCTOR',
+                }));
+
+                const redirectPath = getAndClearRedirectPath();
+                navigate(redirectPath || '/doctor/dashboard');
+                return;
+            }
+
             // Hospital owners use /hospital/login, everything else uses /admin/login
             const res = role === 'hospital'
                 ? await loginHospital(email.trim(), password)
@@ -79,12 +108,17 @@ export default function LoginPage() {
                 const redirectPath = getAndClearRedirectPath();
                 navigate(redirectPath || '/hospital/dashboard');
             } else {
-                localStorage.setItem('user', JSON.stringify(res.data?.admin || res.data || {}));
-                const userRole = res.data?.admin?.role;
-                // Check if there's a saved redirect path
+                const userObj = res.data?.admin || res.user || res.data || {};
+                localStorage.setItem('user', JSON.stringify(userObj));
+                
                 const redirectPath = getAndClearRedirectPath();
-                const defaultPath = userRole === 'SUPER_ADMIN' ? '/admin/dashboard' : '/doctor/dashboard';
-                navigate(redirectPath || defaultPath);
+
+                if (userObj.role === 'DOCTOR') {
+                    navigate(redirectPath || '/doctor/dashboard');
+                } else {
+                    const defaultPath = userObj.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/chemist/dashboard';
+                    navigate(redirectPath || defaultPath);
+                }
             }
         } catch (err) {
             setError(err.message || 'Invalid credentials. Please try again.');

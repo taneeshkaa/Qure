@@ -17,6 +17,7 @@ const appointmentRoutes = require("./appointment.routes");
 const hospitalsRoutes = require("./hospitals.routes");
 
 // Phase 3 routes
+const doctorAuthRoutes = require('./doctor.auth.routes'); // Public: register/login
 const doctorRoutes = require("./doctor.routes");
 const chemistRoutes = require("./chemist.routes");
 
@@ -35,9 +36,10 @@ router.use("/appointments", appointmentRoutes);
 router.use("/hospitals", hospitalsRoutes);
 
 // ─── Phase 3: Doctor Consultation & Chemist ──────────────────
-router.use("/doctor", doctorRoutes);
-router.use("/doctors", doctorRoutes); // plural alias — frontend uses /doctors
-router.use("/chemist", chemistRoutes);
+router.use('/doctor', doctorAuthRoutes); // Public auth routes (register/login) — MUST be first
+router.use('/doctor', doctorRoutes);
+router.use('/doctors', doctorRoutes); // plural alias — frontend uses /doctors
+router.use('/chemist', chemistRoutes);
 
 // ─── Phase 4: Admin Control & File Uploads ───────────────────
 const adminRoutes = require("./admin.routes");
@@ -55,3 +57,6 @@ router.get("/health", (req, res) => {
 module.exports = router;
 
 
+
+const authRoutes = require('./auth.routes');
+router.use('/auth', authRoutes);

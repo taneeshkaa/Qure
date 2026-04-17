@@ -399,3 +399,47 @@ module.exports = {
     addHospitalDoctor,
     removeHospitalDoctor,
 };
+
+
+// Phase 1: ADD DOCTOR (from Hospital)
+module.exports.addDoctor = async (req, res, next) => {
+  try {
+    const { name, email, specialization, experience, consultationFee, hospitalId } = req.body;
+    
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return res.status(400).json({ message: 'Email already exists' });
+
+    const tempPassword = name.split(' ')[0] + '@' + consultationFee;
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(tempPassword, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { name, email, password: hashed, role: 'DOCTOR' }
+      });
+      const doctor = await tx.doctor.create({
+        data: {
+          full_name: name,
+          specialization,
+          experience,
+          consultation_fee: consultationFee,
+          hospital_id: hospitalId,
+          userId: user.id
+        }
+      });
+      return { user, doctor };
+    });
+
+    res.status(201).json({
+      message: 'Doctor added successfully',
+      doctor: {
+        name: result.doctor.full_name,
+        email: result.user.email,
+        specialization: result.doctor.specialization
+      },
+      tempPassword
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};

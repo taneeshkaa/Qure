@@ -15,5 +15,10 @@ export const loginHospital = (email, password) =>
 export const loginAdmin = (email, password) =>
     api.post('/admin/login', { email, password });
 
+// ─── Doctor Login ──────────────────────────────────────────────
+// Backend: POST /api/v1/doctor/login
+export const loginDoctor = (email, password) =>
+    api.post('/doctor/login', { email, password });
+
 // ─── Hospital Registration (from HospitalRegistration page) ───
 export { registerHospital, registerPatient } from './registration.js';

@@ -145,7 +145,7 @@ function Navbar() {
         { label: 'Hospitals', to: '/hospitals' },
         { label: 'Doctors', to: '/doctors' },
         { label: 'How it works', to: '/how-it-works' },
-        { label: 'About', to: '/register' },
+        { label: 'For Doctors', to: '/doctor/register' },
     ];
 
     return (

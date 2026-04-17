@@ -365,4 +365,309 @@ const getDoctorBySlug = catchAsync(async (req, res, next) => {
     });
 });
 
-module.exports = { getPatientCard, prescribe, getPatientAttachments, getDoctors, getDoctorById, getDoctorBySlug };
+// ─── Doctor Dashboard: Get Profile ────────────────────────────
+// GET /api/v1/doctor/dashboard/me
+const getProfile = catchAsync(async (req, res, next) => {
+    const doctor = await prisma.doctor.findUnique({
+        where: { id: req.user.id },
+        include: {
+            hospital: {
+                select: {
+                    id: true,
+                    hospital_name: true,
+                    address: true,
+                },
+            },
+            slots: true,
+        },
+    });
+
+    if (!doctor) {
+        return next(new AppError("Doctor profile not found", 404));
+    }
+
+    res.status(200).json({
+        status: "success",
+        data: doctor,
+    });
+});
+
+// ─── Doctor Dashboard: Get Stats ──────────────────────────────
+const getDashboardStats = catchAsync(async (req, res, next) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appointments = await prisma.appointment.findMany({
+        where: {
+            doctor_id: req.user.id,
+            date: { gte: today, lt: tomorrow },
+        },
+        select: { status: true },
+    });
+
+    const stats = {
+        totalToday: appointments.length,
+        completed: appointments.filter(a => a.status === "COMPLETED").length,
+        pending: appointments.filter(a => a.status === "BOOKED" || a.status === "PENDING" || a.status === "IN_PROGRESS").length,
+        upcoming: 0 // Will customize this based on 'upcoming' logic, for now simple split
+    };
+
+    stats.upcoming = stats.totalToday - stats.completed; // Simplistic approach: upcoming = total - completed
+
+    res.status(200).json({
+        status: "success",
+        data: stats,
+    });
+});
+
+// ─── Doctor Dashboard: Get Appointments ───────────────────────
+const getFilteredAppointments = catchAsync(async (req, res, next) => {
+    const { filter } = req.query; // 'today', 'upcoming', 'past', 'all'
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let dateFilter = {};
+    if (filter === "today") {
+        dateFilter = { gte: today, lt: tomorrow };
+    } else if (filter === "upcoming") {
+        // Technically upcoming is today and future that aren't completed, but let's say >= today
+        dateFilter = { gte: today };
+    } else if (filter === "past") {
+        dateFilter = { lt: today };
+    }
+
+    const where = {
+        doctor_id: req.user.id,
+        ...(Object.keys(dateFilter).length > 0 && { date: dateFilter }),
+    };
+
+    // For "upcoming" we might specifically only want incomplete ones
+    if (filter === "upcoming") {
+        where.status = { not: "COMPLETED" };
+    }
+
+    const appointments = await prisma.appointment.findMany({
+        where,
+        include: {
+            patient: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    phone: true,
+                    age: true,
+                    gender: true,
+                    blood_group: true,
+                    allergies: true,
+                    chronic_conditions: true,
+                    medicalProfile: {
+                        select: { notes: true, allergies: true, medications: true, emergency_name: true, emergency_phone: true }
+                    }
+                },
+            },
+            prescription: true,
+        },
+        orderBy: [{ date: "asc" }, { token_number: "asc" }],
+    });
+
+    res.status(200).json({
+        status: "success",
+        results: appointments.length,
+        data: appointments,
+    });
+});
+
+// ─── Doctor Dashboard: Get Appointment Details ────────────────
+const getAppointmentDetails = catchAsync(async (req, res, next) => {
+    const appointmentId = parseInt(req.params.id, 10);
+    if (isNaN(appointmentId)) return next(new AppError("Invalid ID", 400));
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: {
+            patient: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    phone: true,
+                    age: true,
+                    gender: true,
+                    blood_group: true,
+                    allergies: true,
+                    chronic_conditions: true,
+                    medicalProfile: true
+                }
+            },
+            prescription: true
+        }
+    });
+
+    if (!appointment || appointment.doctor_id !== req.user.id) {
+        return next(new AppError("Appointment not found", 404));
+    }
+
+    // Also get past visits with this doctor
+    const pastVisits = await prisma.appointment.findMany({
+        where: {
+            patient_id: appointment.patient_id,
+            doctor_id: req.user.id,
+            id: { not: appointmentId },
+            status: "COMPLETED"
+        },
+        include: { prescription: true },
+        orderBy: { date: "desc" },
+        take: 5
+    });
+
+    res.status(200).json({
+        status: "success",
+        data: {
+            ...appointment,
+            pastVisits
+        }
+    });
+});
+
+// ─── Doctor Dashboard: Upsert Prescription ────────────────────
+const upsertPrescription = catchAsync(async (req, res, next) => {
+    const { appointmentId, medicines = [], tests = [], diagnosis, doctorNotes } = req.body;
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: { select: { hospital_id: true } } },
+    });
+
+    if (!appointment || appointment.doctor_id !== req.user.id) {
+        return next(new AppError("Appointment not found or unauthorized", 404));
+    }
+
+    const prescriptionData = {
+        doctorId: req.user.id,
+        patientId: appointment.patient_id,
+        medicines,
+        tests,
+        diagnosis,
+        doctorNotes
+    };
+
+    const prescription = await prisma.prescription.upsert({
+        where: { appointmentId: appointmentId },
+        update: prescriptionData,
+        create: {
+            appointmentId: appointmentId,
+            ...prescriptionData
+        }
+    });
+
+    res.status(200).json({
+        status: "success",
+        data: prescription,
+    });
+});
+
+// ─── Doctor Dashboard: Send to Pharmacy ──────────────────────
+const sendToPharmacy = catchAsync(async (req, res, next) => {
+    const prescriptionId = parseInt(req.params.id, 10);
+    if (isNaN(prescriptionId)) return next(new AppError("Invalid ID", 400));
+
+    const prescription = await prisma.prescription.findUnique({
+        where: { id: prescriptionId },
+        include: { doctor: { select: { hospital_id: true } }, patient: true, appointment: true }
+    });
+
+    if (!prescription || prescription.doctorId !== req.user.id) {
+        return next(new AppError("Prescription not found", 404));
+    }
+
+    const updated = await prisma.prescription.update({
+        where: { id: prescriptionId },
+        data: {
+            sentToPharmacy: true,
+            pharmacyReceivedAt: new Date()
+        }
+    });
+
+    // Socket.io emit
+    const io = req.app.get("io");
+    if (io) {
+        const hospitalRoom = `hospital:${prescription.doctor.hospital_id}`;
+        io.to(hospitalRoom).emit("prescription:new", {
+            prescriptionId: updated.id,
+            appointmentId: updated.appointmentId,
+            patientName: prescription.patient.full_name,
+            tokenNumber: prescription.appointment.token_number,
+            medicines: updated.medicines
+        });
+    }
+
+    res.status(200).json({
+        status: "success",
+        data: updated,
+    });
+});
+
+// ─── Doctor Dashboard: Complete Appointment ──────────────────
+const completeAppointment = catchAsync(async (req, res, next) => {
+    const appointmentId = parseInt(req.params.id, 10);
+    if (isNaN(appointmentId)) return next(new AppError("Invalid ID", 400));
+
+    const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId }
+    });
+
+    if (!appointment || appointment.doctor_id !== req.user.id) {
+        return next(new AppError("Appointment not found", 404));
+    }
+
+    const updated = await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { status: "COMPLETED" }
+    });
+
+    // Socket emit to inform patient waiting queue (if configured)
+    const io = req.app.get("io");
+    if (io) {
+        // Emit to doctor's queue channel
+        io.to(`doctor_queue_${req.user.id}`).emit("queue:updated", {
+            appointmentId: updated.id,
+            status: updated.status,
+            tokenNumber: updated.token_number
+        });
+    }
+
+    res.status(200).json({
+        status: "success",
+        data: updated,
+    });
+});
+
+// ─── Doctor Dashboard: Toggle Availability ────────────────────
+// PATCH /api/v1/doctor/dashboard/availability
+const toggleAvailability = catchAsync(async (req, res, next) => {
+    const doctor = await prisma.doctor.findUnique({
+        where: { id: req.user.id },
+    });
+
+    if (!doctor) {
+        return next(new AppError("Doctor not found", 404));
+    }
+
+    const updated = await prisma.doctor.update({
+        where: { id: req.user.id },
+        data: { is_available: !doctor.is_available },
+    });
+
+    res.status(200).json({
+        status: "success",
+        data: { is_available: updated.is_available },
+    });
+});
+
+module.exports = { 
+    getPatientCard, prescribe, getPatientAttachments, getDoctors, getDoctorById, getDoctorBySlug, 
+    getProfile, toggleAvailability,
+    getDashboardStats, getFilteredAppointments, getAppointmentDetails, upsertPrescription, sendToPharmacy, completeAppointment 
+};

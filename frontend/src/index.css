@@ -43,8 +43,6 @@
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
@@ -429,7 +427,7 @@ body {
 /* ── Segmented control (premium identity toggle) ──────────── */
 .seg-control {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
   background: rgba(240, 250, 248, 0.8);
   border: 1.5px solid rgba(11, 158, 135, 0.16);

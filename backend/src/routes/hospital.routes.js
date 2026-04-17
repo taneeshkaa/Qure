@@ -9,4 +9,8 @@ const hospitalSchema = require("../validators/hospital.validator");
 // POST /api/v1/register/hospital
 router.post("/", validate(hospitalSchema), registerHospital);
 
+
+const { addDoctor } = require('../controllers/hospital.controller');
+router.post('/add-doctor', addDoctor);
+
 module.exports = router;

@@ -23,6 +23,7 @@ import AppointmentsPage from './pages/patient/AppointmentsPage';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import ConsultationHub from './pages/doctor/ConsultationHub';
 import ChemistDashboard from './pages/chemist/ChemistDashboard';
+import DoctorRegister from './pages/DoctorRegister';
 
 // Hospital Dashboard
 import HospitalDashboard from './pages/HospitalDashboard';
@@ -50,7 +51,8 @@ export default function App() {
         <Route path="/patient/appointments" element={<AppointmentsPage />} />
 
         {/* ── Phase 3 — Doctor ─────────────────────── */}
-        <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+        <Route path="/doctor/register" element={<DoctorRegister />} />
+        <Route path="/doctor/dashboard" element={<ProtectedRoute allowedRoles={['DOCTOR']}><DoctorDashboard /></ProtectedRoute>} />
         <Route path="/doctor/consultation/:tokenId" element={<ConsultationHub />} />
 
         {/* ── Phase 3 — Chemist ────────────────────── */}
