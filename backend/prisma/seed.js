@@ -107,29 +107,29 @@ async function main() {
   await prisma.medicalProfile.deleteMany();
   await prisma.doctorSlot.deleteMany();
   await prisma.doctor.deleteMany();
+  await prisma.user.deleteMany(); // Added to clear the User table as well
   await prisma.chemist.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.hospital.deleteMany();
   await prisma.symptomMapping.deleteMany();
   // Keep locations — upsert them below
   console.log("   ✅ Cleared.\n");
-
-  // ── Step 1: Seed Locations ────────────────────────────────────
-  let totalLocations = 0;
-  for (const [state, cities] of Object.entries(statesAndCities)) {
+  console.log("➡️ Starting Step 1: Locations");  // ── Step 1: Seed Locations ────────────────────────────────────
+  let totalLocations = 0; console.log('total loc begin');
+  console.log('state loop'); for (const [state, cities] of Object.entries(statesAndCities)) {
     for (const city of cities) {
       await prisma.location.upsert({
         where: { unique_state_city: { state_name: state, city_name: city } },
         update: {},
         create: { state_name: state, city_name: city },
       });
-      totalLocations++;
+      totalLocations++; console.log(totalLocations);
     }
   }
   console.log(`📍 Locations seeded: ${totalLocations}`);
 
   // ── Step 2: Seed Symptom Mappings ────────────────────────────
-  for (const mapping of symptomMappings) {
+  console.log('mapping start'); for (const mapping of symptomMappings) {
     await prisma.symptomMapping.upsert({
       where: { keyword: mapping.keyword },
       update: { specialization: mapping.specialization },
@@ -318,6 +318,15 @@ async function main() {
   const doctors = [];
   for (const def of doctorDefs) {
     const hospital = hospitals[def.hospital];
+    const user = await prisma.user.create({
+      data: {
+        name: def.full_name,
+        email: def.email,
+        password: hashedPassword,
+        role: "DOCTOR"
+      }
+    });
+
     const d = await prisma.doctor.create({
       data: {
         full_name: def.full_name,
@@ -326,6 +335,7 @@ async function main() {
         consultation_fee: def.fee,
         experience: def.experience,
         hospital_id: hospital.id,
+        userId: user.id,
         email: def.email,
         password: hashedPassword,
         phone: def.phone,
@@ -498,6 +508,16 @@ async function main() {
 
   const patients = [];
   for (const def of patientDefs) {
+    // Create the User record for the patient to allow login
+    await prisma.user.create({
+      data: {
+        name: def.full_name,
+        email: def.email,
+        password: hashedPassword,
+        role: "PATIENT"
+      }
+    });
+
     const p = await prisma.patient.create({
       data: {
         full_name: def.full_name,
@@ -557,7 +577,7 @@ async function main() {
     [5, 8, pastDate(55), "09:00", "COMPLETED", "Recurring sinusitis and nasal congestion", 1],
     [6, 3, pastDate(28), "14:30", "COMPLETED", "High fever and body ache for 4 days", 5],
     [7, 7, pastDate(42), "10:00", "COMPLETED", "Ear pain and hearing difficulty in left ear", 3],
-    [8, 24, pastDate(22), "11:00", "COMPLETED", "Chest pain and high blood pressure", 2],
+    [8, 14, pastDate(22), "11:00", "COMPLETED", "Chest pain and high blood pressure", 2],
     [9, 21, pastDate(33), "09:30", "COMPLETED", "Shoulder pain and reduced movement", 1],
 
     // Future booked
